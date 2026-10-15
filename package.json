@@ -1,10 +1,10 @@
 {
-  "name": "contain-protected-connection-mvp",
+  "name": "fairpass",
   "private": true,
-  "workspaces": ["chain", "web"],
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
-    "build:contracts": "npm run build --workspace chain",
-    "test:contracts": "npm run test --workspace chain",
     "dev": "npm run dev --workspace web",
     "build:web": "npm run build --workspace web"
   }

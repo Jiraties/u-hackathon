@@ -81,9 +81,3 @@ The existing domain models and `AdmissionsBackend`, `PublicRegistry`, and
 `RegistryWriter` ports remain in place. Pages receive typed view data through props.
 The local demo verifier is explicitly separate from the real public registry port.
 See [the architecture notes](docs/fairpass-architecture.md).
-
-## Previous starter
-
-The previous Contain frontend is preserved in `web/legacy-contain/`; its contracts
-remain unchanged in `chain/`. Those are Contain/Sepolia contracts, not FairPass
-contracts. The original README remains in [docs/contain-starter.md](docs/contain-starter.md).

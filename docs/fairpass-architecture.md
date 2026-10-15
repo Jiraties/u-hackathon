@@ -104,7 +104,7 @@ It does not provide secure access control or prove the presenter's identity. The
 academic wallet is a credential vault and requires no student wallet address.
 Tokens are not transferable financial assets or student-owned NFTs in this model.
 
-## Runtime and retained starter
+## Runtime
 
 Vite serves direct routes through its SPA fallback; a future host needs the same
 fallback. The public program selector uses local fixtures only. UI state resets
@@ -115,5 +115,5 @@ The presentation is desktop-focused. Google Fonts provides the existing DM Sans
 and Libre Franklin families with local sans-serif fallbacks. Graphics use local
 SVG icons and CSS; no additional dependencies or image services were introduced.
 
-`web/legacy-contain/` preserves the previous starter. `chain/` is unchanged
-Contain/Sepolia code and must not be presented as FairPass's smart contracts.
+The unrelated Contain/Sepolia implementation and Solidity files have been removed.
+The frontend retains only typed interfaces for future integrations, not backend implementations.
