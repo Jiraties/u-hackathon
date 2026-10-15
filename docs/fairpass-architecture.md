@@ -107,8 +107,9 @@ Tokens are not transferable financial assets or student-owned NFTs in this model
 ## Runtime
 
 Vite serves direct routes through its SPA fallback; a future host needs the same
-fallback. The public program selector uses local fixtures only. UI state resets
-on refresh, apart from the credential code represented in the verification URL.
+fallback. The public program selector uses local fixtures only. Most presentation state resets on refresh. Versioned local rulebook snapshots and
+fictional allocation runs persist in browser storage; run IDs appear in student
+preview URLs.
 There is no claim that demo interactions are persisted to a backend.
 
 The presentation is desktop-focused. Google Fonts provides the existing DM Sans
@@ -117,3 +118,70 @@ SVG icons and CSS; no additional dependencies or image services were introduced.
 
 The unrelated Contain/Sepolia implementation and Solidity files have been removed.
 The frontend retains only typed interfaces for future integrations, not backend implementations.
+
+## University rulebooks and local allocation
+
+`domain/rulebooks.ts` is the shared schema for program details, normalized score
+components (explicit source ID, scale, transformation, weight, optional minimum),
+required subjects, curriculum requirements, capacity, year/round and version.
+`evaluateRulebook` validates these and calls the existing `calculateProgramScore`
+arithmetic function. University sample calculations, the local simulator, and
+student traces all use this engine. Invalid/missing inputs or mismatched source
+scales fail closed. GPAX can explicitly use a 4-point scale. Custom scoring
+methods require another modeled adapter rather than being silently normalized.
+
+`data/rulebooks.ts` supplies shared fictional seeds. `RankedProgramResult` stores
+`programId`, `rulebookId` and `rulebookVersion`, with no copied formula. The student
+UI resolves that exact combination and refuses to substitute a newer version.
+A result attestation remains separate from an admission-right credential.
+
+`canonicalRulebook` serializes the complete decision-bearing configuration in a
+fixed property order, sorts set-like arrays, and includes a protocol tag. The
+SHA-256 commitment covers identity/version, university/program, faculty, year,
+round, capacity, formula, component source IDs/scales/transforms/weights/minimums,
+required subjects and curriculum requirements. Publication receipts and UI state
+are excluded. This is a frontend preview protocol, not an agreed production ABI.
+There is no applicant identity, score or preference in the public rulebook hash.
+Private result commitments still require an appropriately randomized design.
+
+`services/ruleWorkspace.ts` stores fictional local previews under
+`fairpass-rule-workspace-v1`. A draft can be saved; preparing it clones and seals
+that version and computes its commitment. The save boundary rejects overwriting
+any sealed historical version. Edits fork to a new version and fresh commitment.
+Storage failures are reported. Hydration validates rules and strips chain receipts:
+browser storage cannot create authenticated publication state. There is no
+production access control or cross-device/cross-tab concurrency guarantee.
+
+The same module contains a small central student-proposing matching simulator:
+applicants propose in preference order; programs keep up to capacity, ranking by
+their own unrounded score, with ties broken by opaque fictional applicant IDs.
+It has a complete synthetic cohort for the three choices in Narin’s seed only.
+It is not the official TCAS allocator, nor a verified computation over authentic
+applicant inputs. Runs record all rulebook IDs and private assignments locally.
+Narin’s non-admitted run link projects those exact versions into the existing
+student experience. A simulated offer is shown in the university console without
+minting a token or rewriting the admitted wallet. Other programs have no sample
+allocation cohort yet. No fairness guarantee follows from local computation.
+
+`components/IssuanceConsole.tsx` preserves the existing issuance interaction as a
+secondary workflow. Its preview capacity is derived from the latest prepared
+program rulebook; drafts do not change an active preview. The final issue action
+remains disabled. Public transparency counts stay labeled seed fixtures; a local
+rulebook does not modify a purported live chain registry.
+
+`RuleRegistry` in `services/ports.ts` reserves the reusable versioned registry
+boundary and the genuine draft / awaiting-signature / pending / confirmed / failed
+transaction states. No implementation is connected, so the UI never advances to a
+fake transaction state. Publishing is disabled; local preparation is separate.
+
+Exact integration gaps: deploy and test one authorized append-only Fuji rule
+registry, agree the canonical format/ABI and commitment verification, configure
+network/address and signer, implement signature/receipt/event/commitment checks,
+provide authenticated private source scores and qualifications, supply the agreed
+central allocator and complete authenticated inputs, and enforce issuance against
+live registry capacity and confirmed admissions. The repo has no backend, contract,
+or wallet dependency; this change does not add any.
+
+`web/scripts/check-rulebooks.cjs` includes the original student regressions plus
+rule validation, scale/eligibility checks, canonical ordering and independent hash
+checks, version isolation, capacity, tie-breaking and preference matching.

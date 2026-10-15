@@ -22,3 +22,16 @@ export interface RegistryWriter {
   issueAdmission(input: { programId: string; confirmationId: string; studentCommitment: `0x${string}` }): Promise<ChainReference>;
   changeStatus(input: { credentialId: string; status: "withdrawn" | "revoked" }): Promise<ChainReference>;
 }
+
+/** Future reusable versioned registry boundary; no signer is implemented here.
+ * A successful receipt must be checked against the canonical complete rulebook. */
+export type RulePublicationState =
+  | { status: "draft" }
+  | { status: "awaiting_signature" }
+  | { status: "transaction_pending"; transactionHash: `0x${string}` }
+  | { status: "confirmed_on_chain"; receipt: ChainReference; publishedAt: string }
+  | { status: "transaction_failed"; message: string };
+export interface RuleRegistry {
+  getRulebook(programId: string, version: number): Promise<import("../domain/rulebooks").AdmissionRulebook | null>;
+  publishVersion(rulebook: import("../domain/rulebooks").AdmissionRulebook, onState: (state: RulePublicationState) => void): Promise<ChainReference>;
+}

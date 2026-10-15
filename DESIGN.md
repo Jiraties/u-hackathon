@@ -87,6 +87,10 @@ dashboard metric grids, or large decorative marketing banners.
 
 ## Student wallet
 
+Keep **Back to myTCAS** in the top-right navigation beside **For universities**,
+leading to `https://www.mytcas.com/`. It is available for both admitted and
+non-admitted students. Do not place it above the student greeting.
+
 After issuance, the admission token is the primary visual element. Preserve the
 current two-column relationship between the large pass and its short explanation.
 
@@ -116,9 +120,31 @@ link reveals and avoid disclosing personal information.
 
 Preserve the admitted wallet. For an unsuccessful applicant, replace the token hero
 with an **Admission Result** card and a neutral **Not admitted** status. Use the
-heading **Your result. Clearly explained.** and primary action **Understand my result**.
+heading **Your result. Clearly explained.** and primary action **See why →**.
 
-Show ranked programs and their independently calculated, program-specific scores.
+Lead directly from the result into its supporting records and program calculation
+trace. Do not add a separate “Your proof journey”, blockchain comparison lesson,
+or “Try changing the result” exercise. Evidence should be available where the
+student encounters each record, without introducing hypothetical tampering.
+
+Use compact proof badges beside the timeline and calculation steps. Each opens a
+direct Web3 evidence modal for that step: source, applicable formula, commitment,
+network, contract, transaction, block and independent verification state. Use
+**On-chain** with a check only when authenticated chain evidence has actually been
+verified. Rule badges use a quiet blue check and **Smart contract rules** (or **Contract
+criteria** for eligibility). Other records use specific labels such as **Score
+record**, **Calculation**, and **Result record**. Keep demo and missing-chain
+qualifiers inside the proof modal and retain the page’s fictional-data context.
+A blue rule badge identifies contract-oriented provenance in the preview; it must
+not say **Verified** unless a real verification exists. Never create fake transaction data to fill a modal.
+
+Ranked Thai programs are selectable cards with the full calculation visible:
+**Scores → Formula → Calculated score → Eligibility → Reported outcome**.
+Keep responsive changes scoped to the non-admitted experience and preserve the
+admitted screen. Keep privacy and allocation limitations concise; detailed
+verification explanations belong in the relevant modal.
+
+Show ranked programs and their locally calculated, program-specific scores.
 Let students inspect the formula and reported subject inputs. Calculation alone is
 not authentication or allocation verification; distinguish all three checks:
 
@@ -155,21 +181,33 @@ Put contract addresses, transaction hashes, and issuer evidence under
 **View blockchain details**. Technical implementation details should not dominate
 the student experience.
 
-## University issuance
+## University rulebooks and issuance
 
-Keep the focused sequence:
+Lead the university console with **Set the rules. Make them checkable.** Program
+rulebook cards show year, capacity, version and honest Draft / Local preview /
+Published status. Creating a rulebook is primary; issuing credentials is secondary.
 
-**Choose program → Import confirmed students → Review → Issue tokens.**
+Use a focused four-step builder: **Program details → Scoring rules → Eligibility →
+Review rulebook**. Show the score composition visually, use editable weights and
+component scales, and validate the total at 100% for normalized weighted sums.
+Other scoring methods need an explicitly modeled adapter; do not imply these
+sample formulas describe every official TCAS program.
 
-Show the selected program, its registered capacity, active rights, and the
-projected count after issuance. Explain that the contract enforces the limit.
-Do not imply that a disabled frontend control itself enforces authorization or capacity.
+Review the full rules with a fictional student calculation. **Publish on Avalanche**
+remains disabled until a versioned Fuji registry and authorized signer exist.
+**Prepare local preview** produces a fixed local version and deterministic rule
+fingerprint; it never means published or verified on-chain. Historical versions
+cannot be edited. Changes create a new version.
 
-Prefer a small review list to long administrative tables. Keep unrelated metrics,
-account management, and operational dashboards out of this flow.
+The local central simulator handles preferences and program-specific rankings.
+Keep that separate from university rule authoring. Student results reference the
+same rulebook ID and version used for processing; newer versions never silently
+replace historical rules. Local simulation does not verify allocation fairness.
 
-When no real signer or contract is connected, allow local preview steps but keep
-actual issuance disabled. Never show a fake successful transaction.
+Preserve **Choose program → Import confirmed students → Review & issue** under
+**Issue admission tokens**. Preview capacity comes from the prepared rulebook.
+Actual issuance remains disabled and must ultimately use live contract capacity,
+authorization and confirmation state. A frontend counter cannot enforce it.
 
 ## Public transparency
 
