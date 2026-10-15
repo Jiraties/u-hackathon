@@ -1,0 +1,11 @@
+{
+  "name": "contain-protected-connection-mvp",
+  "private": true,
+  "workspaces": ["chain", "web"],
+  "scripts": {
+    "build:contracts": "npm run build --workspace chain",
+    "test:contracts": "npm run test --workspace chain",
+    "dev": "npm run dev --workspace web",
+    "build:web": "npm run build --workspace web"
+  }
+}

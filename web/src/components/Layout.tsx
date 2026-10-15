@@ -1,0 +1,20 @@
+import type { ReactNode } from "react";
+import { Icon } from "./Icon";
+export type PageId = "wallet" | "university" | "transparency" | "verify";
+const navigation: { id: PageId; label: string; href: string }[] = [
+  { id: "wallet", label: "My wallet", href: "/student/wallet" },
+  { id: "verify", label: "Verify a token", href: "/verify" },
+  { id: "transparency", label: "Transparency", href: "/transparency" },
+];
+export const Layout = ({ page, children }: { page: PageId; children: ReactNode }) => (
+  <>
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <header className="site-header">
+      <a className="wordmark" href="/student/wallet" aria-label="FairPass home"><span className="brand-symbol"><Icon name="graduation" size={27} /></span>FairPass<span className="brand-period">.</span></a>
+      <nav className="primary-nav" aria-label="Primary navigation">{navigation.map(item => <a key={item.id} className={`nav-link${page === item.id ? " active" : ""}`} aria-current={page === item.id ? "page" : undefined} href={item.href}>{item.label}</a>)}</nav>
+      <div className="header-end"><a className={`institution-link${page === "university" ? " active" : ""}`} href="/university" aria-current={page === "university" ? "page" : undefined}>For universities <Icon name="arrow" size={16} /></a><span className="preview-pill"><span />Demo</span></div>
+    </header>
+    <main id="main-content" tabIndex={-1}>{children}</main>
+    <footer id="prototype-note"><a href="/student/wallet" className="footer-brand">FairPass.</a><span>University-issued. Independently checkable.</span><p>Fictional records · No university affiliation, TCAS integration, or live blockchain verification.</p></footer>
+  </>
+);
