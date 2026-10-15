@@ -246,3 +246,104 @@ test('deployment, bootstrap, server, fictional demo and independent verification
     await mongo.stop();
   }
 });
+
+test('shared rulebook publication and persisted simulation enforce institutional boundaries and a single intake', async(t)=>{
+  const {rulebookCommitment, canonicalRulebook, evaluateRulebook, allocatePreview}=await import('../shared/domain.js');
+  const {createHash}=await import('node:crypto');
+  const mongo=await MongoMemoryServer.create({binary:{downloadDir:path.resolve('cache/mongodb')}});
+  t.after(()=>mongo.stop());
+  const connection=await connectStore(mongo.getUri(),'fairpass_shared');t.after(()=>connection.close());
+  const store=connection.store;
+  const config={ADMIN_API_TOKEN:'a'.repeat(40),ISSUER_API_TOKEN:'i'.repeat(40),INTEGRATION_API_TOKEN:'x'.repeat(40),INSTITUTION_ID:'fairpass-demo',CORS_ORIGIN:'http://localhost:5173'} as Config;
+  const app=createApp(config,store,chain), password='fictional-shared-test-password';
+  for(const studentId of ['shared-a','shared-z'])await store.students.insertOne({_id:studentId,name:studentId,passwordHash:await passwordHash(password)});
+  await request(app).post('/v1/admin/operators').set('Authorization',`Bearer ${config.ADMIN_API_TOKEN}`).send({operatorId:'shared-office',institutionId:'fairpass-demo',name:'Office',password}).expect(201);
+  const office=(await request(app).post('/v1/auth/institution/login').send({operatorId:'shared-office',password}).expect(200)).body.token;
+  const student=(await request(app).post('/v1/auth/login').send({studentId:'shared-z',password}).expect(200)).body.token;
+  const authOffice=`Bearer ${office}`,authStudent=`Bearer ${student}`;
+  const rule:import('../shared/domain.js').AdmissionRulebook={id:'shared-rule',programId:'shared-engineering',institutionId:'fairpass-demo',programName:'Fictional Engineering',faculty:'Engineering',academicYear:2028,round:'shared-round',capacity:1,version:1,method:'normalized-weighted-sum',components:[{scoreId:'gpax',label:'GPAX',source:'demo-school-record',sourceComponentId:'GPAX',maximum:4,transformation:'normalize-to-100',weightPercent:100,minimumPercent:50}],requiredSubjects:['gpax'],qualifications:[{field:'curriculum',equals:'Science–Mathematics'}],status:'draft',createdAt:new Date().toISOString(),sealedAt:null,commitment:null,chainReference:null,publication:null};
+  const hash=await rulebookCommitment(rule);
+  assert.equal(hash,'0x'+createHash('sha256').update(canonicalRulebook(rule)).digest('hex'));
+  for(const mutation of [{capacity:2},{round:'different'},{requiredSubjects:[]},{qualifications:[]},{version:2},{components:[{...rule.components[0],minimumPercent:51}]}])
+    assert.notEqual(await rulebookCommitment({...rule,...mutation}),hash);
+  await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authStudent).send(rule).expect(401);
+  await request(app).get('/v1/me/wallet').set('Authorization',authOffice).expect(401);
+  await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send({...rule,institutionId:'other'}).expect(403);
+  const published=(await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send(rule).expect(201)).body;
+  assert.equal(published.rulesHash,hash);assert.ok(published.lock.transactionHash);
+  const retry=(await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send(rule).expect(201)).body;
+  assert.equal(retry.lock.transactionHash,published.lock.transactionHash);
+  await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send({...rule,id:'shared-rule-v2',version:2}).expect(409);
+  const score=(value:number)=>[{id:'gpax',subject:'GPAX',label:'GPAX',score:value,maximum:4,provenance:'simulated-exam-provider' as const}];
+  const applicants=[{id:'shared-a',scores:score(3.60001),preferences:[rule.programId],qualifications:{curriculum:'Science–Mathematics'}},{id:'shared-z',scores:score(3.60002),preferences:[rule.programId],qualifications:{curriculum:'Science–Mathematics'}}];
+  assert.deepEqual(allocatePreview([rule],applicants),{'shared-a':null,'shared-z':rule.programId}); // same display score, different raw ranking
+  const evaluated=evaluateRulebook(rule,score(3.6),{curriculum:'Science–Mathematics'});assert.equal(evaluated.status,'calculated');if(evaluated.status==='calculated')assert.equal(evaluated.total,90);
+  const payload={runId:'shared-run',programIds:[published.programId],applicants};
+  await request(app).post('/v1/office/simulations').set('Authorization',authStudent).send(payload).expect(401);
+  await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send({...payload,programIds:[randomId()]}).expect(403);
+  const processed=(await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send(payload).expect(201)).body;
+  assert.deepEqual(processed.assignments,allocatePreview([rule],applicants));
+  await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send(payload).expect(201);
+  await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send({...payload,runId:'second-run'}).expect(409);
+  assert.equal((await store.results.find({}).toArray()).length,2);
+  const view=(await request(app).get('/v1/me/wallet').set('Authorization',authStudent).expect(200)).body;
+  const result=view.records[0];assert.equal(result.report.outcome,'admitted');assert.equal(result.credential,null);assert.equal(result.report.rulebooks[0].id,rule.id);
+  const other=(await store.results.findOne({studentId:'shared-a'}))!;
+  await request(app).get(`/v1/me/results/${other.resultId}/proof`).set('Authorization',authStudent).expect(404);
+  await request(app).post(`/v1/issuer/results/${result.resultId}/issue`).set('Authorization',authStudent).send({}).expect(401);
+  await request(app).post(`/v1/me/results/${result.resultId}/confirm`).set('Authorization',authStudent).send({}).expect(200);
+  const issued=(await request(app).post(`/v1/issuer/results/${result.resultId}/issue`).set('Authorization',authOffice).send({}).expect(200)).body;
+  assert.ok(issued.issuance.transactionHash);
+  assert.equal((await request(app).post(`/v1/issuer/results/${result.resultId}/issue`).set('Authorization',authOffice).send({}).expect(200)).body.credentialId,issued.credentialId);
+  const officeResults=(await request(app).get('/v1/office/results').set('Authorization',authOffice).expect(200)).body;assert.equal(officeResults.length,2);
+  await request(app).post(`/v1/issuer/credentials/${issued.credentialId}/status`).set('Authorization',authOffice).send({status:'enrolled',reasonCommitment:randomId()}).expect(200);
+  assert.equal((await request(app).get(`/v1/public/verify/${issued.credentialId}`).expect(200)).body.lifecycle,'enrolled');
+  const publicView=(await request(app).get('/v1/public/programs').expect(200)).body[0];assert.equal(publicView.rulesMatch,true);assert.equal(publicView.rulebook.id,rule.id);assert.equal(publicView.rulebook.status,'published');assert.equal(result.report.rulebooks[0].commitment,hash);
+  await request(app).post('/v1/auth/institution/logout').set('Authorization',authOffice).send({}).expect(204);
+  await request(app).get('/v1/office/results').set('Authorization',authOffice).expect(401);
+});
+
+test('browser: publish rules → process cohort → student confirmation → institutional issue → public verification', {skip:process.env.FAIRPASS_BROWSER_TEST!=='1'}, async(t)=>{
+  try {
+  const {chromium}=await import('playwright');
+  const {default:express}=await import('express');
+  const mongo=await MongoMemoryServer.create({binary:{downloadDir:path.resolve('cache/mongodb')}});t.after(()=>mongo.stop());
+  const connection=await connectStore(mongo.getUri(),'fairpass_browser');t.after(()=>connection.close());
+  const config={ADMIN_API_TOKEN:'a'.repeat(40),ISSUER_API_TOKEN:'i'.repeat(40),INTEGRATION_API_TOKEN:'x'.repeat(40),INSTITUTION_ID:'fairpass-demo',CORS_ORIGIN:'http://localhost:5173'} as Config;
+  const password='fictional-browser-password';
+  for(const studentId of ['browser-pim','browser-narin'])await connection.store.students.insertOne({_id:studentId,name:studentId,passwordHash:await passwordHash(password)});
+  await connection.store.operators.insertOne({_id:'browser-office',name:'Office',institutionId:'fairpass-demo',passwordHash:await passwordHash(password)});
+  const host=express();host.use('/api',createApp(config,connection.store,chain));host.use(express.static(path.resolve('../web/dist')));host.get('/{*path}',(_req,res)=>res.sendFile(path.resolve('../web/dist/index.html')));
+  const server=host.listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',()=>resolve()));
+  t.after(()=>new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve());}));
+  const base=`http://127.0.0.1:${(server.address() as import('node:net').AddressInfo).port}`;
+  const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+  const office=await browser.newPage({viewport:{width:1440,height:1000}}),student=await browser.newPage({viewport:{width:1440,height:1000}});
+  const errors:string[]=[];for(const page of [office,student])page.on('pageerror',error=>errors.push(error.message));
+  await office.goto(base+'/university');
+  await office.getByLabel('Operator ID').fill('browser-office');await office.getByLabel('Password',{exact:true}).fill(password);await office.getByRole('button',{name:'Sign in',exact:true}).click();
+  await office.getByLabel('Program slug').fill('browser-engineering');await office.getByLabel('Admission round').fill('browser-round');await office.getByRole('button',{name:'Continue',exact:true}).click();
+  await office.getByRole('button',{name:'Continue',exact:true}).click();await office.getByRole('button',{name:'Continue',exact:true}).click();
+  await office.getByRole('button',{name:'Publish and lock rules',exact:true}).click();await office.getByRole('heading',{name:'Rules locked on chain',exact:true}).waitFor();
+  await office.getByLabel('Locked program').selectOption({label:'Fictional Engineering · browser-round'});
+  await office.getByLabel('Student ID 1', {exact:true}).fill('browser-pim');await office.getByLabel('TGAT / 100',{exact:true}).fill('95');
+  await office.getByRole('button',{name:'Add fictional applicant',exact:true}).click();await office.getByLabel('Student ID 2',{exact:true}).fill('browser-narin');await office.getByLabel('TGAT / 100',{exact:true}).nth(1).fill('50');
+  await office.getByRole('button',{name:'Process and record results',exact:true}).click();await office.getByText('Results are saved and recorded.',{exact:false}).waitFor();
+  await student.goto(base+'/student/wallet');await student.getByLabel('Student ID',{exact:true}).fill('browser-pim');await student.getByLabel('Password',{exact:true}).fill(password);await student.getByRole('button',{name:'Sign in',exact:true}).click();
+  await student.getByRole('heading',{name:'Admission offered',exact:true}).waitFor();await student.getByRole('button',{name:'Check result integrity',exact:true}).click();await student.getByRole('heading',{name:'Result integrity: verified',exact:true}).waitFor();
+  await student.getByRole('button',{name:'Request confirmation',exact:true}).click();await student.getByText('Confirmation requested. Waiting for institution issuance.',{exact:true}).waitFor();
+  await office.getByRole('button',{name:'Refresh confirmations',exact:true}).click();await office.getByRole('button',{name:'Issue admission right',exact:true}).click();await office.getByRole('link',{name:'Public verification',exact:true}).waitFor();
+  await student.reload();await student.getByRole('link',{name:'Verify admission right',exact:true}).click();await student.getByRole('heading',{name:'Valid admission right',exact:true}).waitFor();
+  const credentialId=new URL(student.url()).pathname.split('/').pop()!;assert.match(credentialId,/^0x[0-9a-f]{64}$/);
+  assert.equal((await chain.read('credential',[credentialId]))[1],1);
+  await student.screenshot({path:path.resolve('cache/browser-verification.png'),fullPage:true});
+  await student.goto(base+'/transparency');await student.getByRole('heading',{name:'Fictional Engineering',exact:true}).waitFor();await student.getByRole('button',{name:'View registry events',exact:true}).click();await student.getByText('RightIssued',{exact:true}).waitFor();
+  await student.screenshot({path:path.resolve('cache/browser-transparency.png'),fullPage:true});
+  await student.goto(base+'/student/wallet');await student.getByRole('button',{name:'Sign out',exact:true}).click();await student.getByRole('heading',{name:'Sign in',exact:true}).waitFor();
+  await student.getByLabel('Student ID',{exact:true}).fill('browser-narin');await student.getByLabel('Password',{exact:true}).fill(password);await student.getByRole('button',{name:'Sign in',exact:true}).click();await student.getByRole('heading',{name:'Not admitted',exact:true}).waitFor();
+  assert.equal(await student.getByRole('link',{name:'Verify admission right',exact:true}).count(),0);
+  await student.screenshot({path:path.resolve('cache/browser-wallet.png'),fullPage:true});
+  await office.screenshot({path:path.resolve('cache/browser-office.png'),fullPage:true});
+  assert.deepEqual(errors,[]);
+  } catch(error) { console.error(error); throw error; }
+});

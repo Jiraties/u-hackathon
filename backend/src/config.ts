@@ -11,6 +11,7 @@ const schema = z.object({
   DEPLOYMENT_BLOCK: z.coerce.bigint().nonnegative(),
   ISSUER_PRIVATE_KEY: key, AUTHORITY_PRIVATE_KEY: key,
   ADMIN_API_TOKEN: z.string().min(32), INTEGRATION_API_TOKEN: z.string().min(32), ISSUER_API_TOKEN: z.string().min(32),
+  INSTITUTION_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/).default('fairpass-demo'),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
 });
 export type Config = z.infer<typeof schema>;

@@ -14,8 +14,8 @@ export const normalizeCredentialCode = (input: string): string => {
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const path = new URL(trimmed).pathname.match(/^\/verify\/([^/]+)\/?$/);
-      return path ? decodeURIComponent(path[1]).toUpperCase() : "";
+      return path ? normalizeCredentialCode(decodeURIComponent(path[1])) : "";
     } catch { return ""; }
   }
-  return trimmed.toUpperCase();
+  return /^0x[0-9a-f]{64}$/i.test(trimmed) ? trimmed.toLowerCase() : trimmed.toUpperCase();
 };

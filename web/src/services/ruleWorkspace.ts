@@ -1,6 +1,7 @@
+import { allocatePreview } from "../../../backend/shared/domain";
 import { useState } from "react";
 import type { RankedProgramResult, ScoreRecord } from "../domain/models";
-import { evaluateRulebook, rulebookCommitment, validateRulebook, type AdmissionRulebook } from "../domain/rulebooks";
+import { rulebookCommitment, validateRulebook, type AdmissionRulebook } from "../domain/rulebooks";
 import { choiceFromRulebook } from "../data/rulebooks";
 
 export interface PreviewApplicant { id:string; scores:readonly ScoreRecord[]; preferences:string[]; qualifications:Record<string,string> }
@@ -8,29 +9,7 @@ export interface AllocationPreview { id:string; createdAt:string; rulebookIds:st
 export interface RuleWorkspace { schema:1; rulebooks:AdmissionRulebook[]; runs:AllocationPreview[] }
 const storageKey = "fairpass-rule-workspace-v1";
 
-/** Fictional student-proposing deferred acceptance. Each program ranks by its own
- * unrounded normalized score; ties use opaque applicant IDs in codepoint order.
- * No authentic TCAS algorithm, inputs, or independent fairness verification is claimed. */
-export const allocatePreview = (rules:readonly AdmissionRulebook[], applicants:readonly PreviewApplicant[]) => {
-  if (new Set(rules.map(r=>r.programId)).size !== rules.length || rules.some(r=>validateRulebook(r).length)) throw new Error("Use one valid rulebook per program.");
-  if (new Set(applicants.map(a=>a.id)).size !== applicants.length || applicants.some(a=>new Set(a.preferences).size !== a.preferences.length || a.preferences.some(p=>!rules.some(r=>r.programId===p)))) throw new Error("Applicant IDs and preferences must be unique and refer to supplied programs.");
-  const queue = [...applicants]; const next = new Map(applicants.map(a=>[a.id,0]));
-  const held = new Map<string,{id:string;score:number}[]>(rules.map(r=>[r.programId,[]]));
-  while (queue.length) {
-    const applicant = queue.shift()!; const index = next.get(applicant.id)!;
-    if (index >= applicant.preferences.length) continue;
-    const programId = applicant.preferences[index]; next.set(applicant.id,index+1);
-    const rule = rules.find(r=>r.programId===programId)!;
-    const evaluated = evaluateRulebook(rule,applicant.scores,applicant.qualifications);
-    if (evaluated.status !== "calculated" || !evaluated.eligible) { queue.push(applicant); continue; }
-    const pool = [...held.get(programId)!,{id:applicant.id,score:evaluated.rawTotal}].sort((a,b)=>b.score-a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    const rejected = pool.length > rule.capacity ? pool.pop() : undefined; held.set(programId,pool);
-    if (rejected) queue.push(applicants.find(a=>a.id===rejected.id)!);
-  }
-  const assignments:Record<string,string|null> = Object.fromEntries(applicants.map(a=>[a.id,null]));
-  for (const [program,students] of held) for (const student of students) assignments[student.id]=program;
-  return assignments;
-};
+export { allocatePreview } from "../../../backend/shared/domain";
 export const runAdmissionPreview = (rules:AdmissionRulebook[], student:PreviewApplicant, now:string):AllocationPreview => {
   // Complete synthetic cohort for this preview only. Every rival has stronger exam
   // scores than Narin's seed; no private data from real applicants is used.

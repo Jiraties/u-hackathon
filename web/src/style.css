@@ -705,3 +705,34 @@ body.non-admitted-view { min-width:0; }
 .rule-console>.university-page { padding-top:0; }
 
 .student-run-context { margin-bottom:25px; }
+
+/* Live API flows retain the established FairPass type, palette and controls. */
+.live-panel { padding: 32px; margin: 24px 0; }
+.live-signin { max-width: 580px; margin: 48px auto; }
+.live-field { display:flex; flex-direction:column; gap:8px; margin:16px 0; color:var(--text, #18334e); font-weight:600; }
+.live-field input, .live-field select { min-height:48px; border:1px solid #c8d6e4; border-radius:8px; padding:10px 12px; background:white; color:#18334e; font:inherit; min-width:0; }
+.live-field input:focus-visible, .live-field select:focus-visible, .live-steps button:focus-visible { outline:3px solid #0075c9; outline-offset:3px; }
+.live-actions { display:flex; flex-wrap:wrap; gap:12px; margin:20px 0; }
+.live-id { overflow-wrap:anywhere; font-size:14px; color:#60758a; }
+.live-error { color:#8c2b27; background:#fff1ee; padding:14px; border-radius:8px; }
+.live-json { overflow:auto; max-height:420px; background:#f1f6fc; padding:20px; font-size:13px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.live-panel details { margin:20px 0; } .live-panel summary { cursor:pointer; color:#0075c9; padding:8px 0; }
+.live-counters { display:flex; gap:64px; margin:24px 0; } .live-counters strong { display:block; font-size:32px; color:#15324d; } .live-counters span { display:block; color:#60758a; }
+.live-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 24px; }
+.live-component { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e2eaf2; gap:24px; }
+.live-component label { display:flex; gap:12px; align-items:center; } .live-component input[type=checkbox] { width:20px; height:20px; }
+.live-cohort { display:flex; gap:20px; flex-wrap:wrap; border-bottom:1px solid #e2eaf2; padding:12px 0; }
+.live-cohort .live-field { flex:1 1 140px; }
+.live-steps { display:flex; gap:8px; margin:24px 0; }
+.live-steps button { border-radius:0; flex:1; border:0; border-bottom:3px solid #e2eaf2; background:#fff; color:#60758a; padding:16px 8px; font:inherit; cursor:pointer; }
+.live-steps button.active { border-color:#0075c9; color:#0075c9; font-weight:700; }
+.live-result { border-top:1px solid #e2eaf2; margin-top:24px; padding-top:24px; }
+.live-proof { background:#f1f6fc; border-radius:12px; padding:20px; margin-top:20px; }
+button:disabled { cursor:wait; opacity:.6; }
+.live-heading { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:40px 0 28px; max-width:850px; }
+.live-heading .eyebrow, .live-heading p { margin:0; } .live-heading h1 { margin:0; font-size:44px; line-height:1.15; letter-spacing:-1.5px; color:#15324d; }
+.live-panel { background:#fff; border:1px solid #e2eaf2; border-radius:20px; }
+.live-panel h2 { margin:8px 0 16px; } .live-panel h3 { margin:20px 0 10px; }
+.live-panel p { line-height:1.6; }
+.live-panel .button:not(.button-primary) { border:1px solid #c8d6e4; border-radius:10px; min-height:44px; padding:10px 18px; background:#fff; color:#18334e; font-weight:600; }
+.live-panel .button:not(.button-primary):hover { background:#f1f6fc; }
