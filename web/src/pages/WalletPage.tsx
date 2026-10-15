@@ -45,7 +45,7 @@ export const WalletPage = ({ data }: { data: FairPassViewData }) => {
   });
   const wallet = data.demoWallets.find(item => item.student.id === selectedId) ?? data.wallet;
   return <>
-    {wallet.admission.status === "not_admitted" ? <NonAdmittedWallet key={wallet.student.id} wallet={wallet} result={wallet.admission.result} institutions={data.institutions} /> : <AdmittedWallet key={wallet.student.id} data={{ ...data, wallet }} />}
+    {wallet.admission.status === "not_admitted" ? <NonAdmittedWallet key={wallet.student.id} wallet={wallet} result={wallet.admission.result} institutions={data.institutions} rulebooks={data.rulebooks} /> : <AdmittedWallet key={wallet.student.id} data={{ ...data, wallet }} />}
     <section className="demo-student-switcher" aria-label="Demo student selection"><div><strong>Explore another applicant’s experience</strong><p>Fictional accounts. Switching changes this local preview only.</p></div><label><span className="sr-only">Demo student</span><select value={wallet.student.id} onChange={event => {
       setSelectedId(event.target.value);
       const next = data.demoWallets.find(item => item.student.id === event.target.value);

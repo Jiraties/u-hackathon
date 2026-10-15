@@ -22,7 +22,7 @@ Dependencies are already installed; a fresh checkout can use `pnpm install`.
 | Page | Route | Preview behavior |
 | --- | --- | --- |
 | My wallet | `/student/wallet` (also `/`) | Digital admission pass, token detail dialog, verification link, demo sharing, and expandable exam records |
-| University | `/university` | Choose program, load fictional confirmations, review capacity, then see the disabled final issuance action |
+| University | `/university` | Create versioned admission rules, inspect sample scoring, prepare a local version, run fictional allocation, or open secondary credential issuance |
 | Transparency | `/transparency` | Select a sample program, inspect a capacity visualization and its own sample event timeline |
 | Verifier | `/verify` or `/verify/FP-2027-00842` | Enter a token code or link; explore clearly labelled local verification results |
 
@@ -34,14 +34,14 @@ The **Explore another applicant’s experience** selector below the wallet switc
 between Pim (admitted) and Narin (not admitted). Open the non-admitted sample directly
 at `/student/wallet?demo=not-admitted`. Narin has a private result attestation and no
 admission-right token. Ranked programs show calculated scores of 60.30, 59.80, and
-61.15 using fictional program-specific criteria, with expandable calculations.
+61.15 using fictional program-specific criteria, with visual calculations from their pinned rulebooks.
 Score authenticity and result integrity are not verified; allocation verification
 is unavailable. None of these sample records is signed or published on-chain.
 
 Run focused admission-result regression checks with:
 
 ```sh
-node web/scripts/check-admission-results.cjs
+node web/scripts/check-rulebooks.cjs
 ```
 
 ## Demo verification examples
@@ -81,3 +81,36 @@ The existing domain models and `AdmissionsBackend`, `PublicRegistry`, and
 `RegistryWriter` ports remain in place. Pages receive typed view data through props.
 The local demo verifier is explicitly separate from the real public registry port.
 See [the architecture notes](docs/fairpass-architecture.md).
+
+## Rulebook demo walkthrough
+
+1. Open `/university` and choose **Create rulebook** for Kasetsart Computer Engineering.
+2. Configure details, subject scales/weights and eligibility. Weights must total 100%.
+3. Review Narin’s calculation and choose **Prepare local preview**. The version is
+   fixed and fingerprinted locally; **Publish on Avalanche** stays disabled.
+4. Choose **Process admissions**, then **Run local admissions preview**.
+5. Open **Inspect Narin’s result**. Each program trace uses the exact rulebook ID
+   and version from that run; the Smart contract rules badge opens its evidence.
+6. Create a later version to change the rules. Earlier run links retain their
+   original versions. Browser-local preview data survives route navigation/reload.
+
+The sample cohort has 145 fictional applicants and three ranked programs at
+Chulalongkorn, Kasetsart and Thammasat. Student-proposing matching uses each
+program’s unrounded weighted score; ties use fictional applicant IDs. It is not
+the official TCAS algorithm and does not establish independently verified fairness.
+If altered capacity produces a simulated offer for Narin, the console shows it;
+no admission-right token is created. Other program rulebooks support authoring
+and score review but do not have a modeled allocation cohort yet.
+
+Rules use `web/src/domain/rulebooks.ts` and the existing shared arithmetic engine.
+Local snapshots/runs are in `web/src/services/ruleWorkspace.ts`, under the versioned
+browser key `fairpass-rule-workspace-v1`. They are fictional, editable browser
+storage, not authenticated blockchain evidence or a production data store.
+
+Remaining integrations: a reusable authorized versioned Fuji rule registry;
+contract/address/ABI configuration; signer and real receipt handling; issuer and
+commitment verification; authenticated private score/qualification/confirmation
+APIs; an agreed allocation algorithm and complete inputs; live issuance/capacity.
+The `RuleRegistry` port defines transaction states without fabricating transactions.
+No contracts or backend endpoints were introduced. See the architecture notes.
+There is no configured lint command; TypeScript validation runs with the build.

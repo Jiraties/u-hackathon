@@ -1,65 +1,121 @@
-import { useRef } from "react";
-import type { Institution, PrivateAdmissionResult, ResultVerificationKind, StudentWallet } from "../domain/models";
-import { calculateProgramScore, resultCheckState } from "../domain/admissionResults";
-import { Icon, type IconName } from "./Icon";
-import { Badge } from "./ui";
+import { useLayoutEffect, useRef, useState } from "react";
+import type { Institution, PrivateAdmissionResult, RankedProgramResult, ResultVerificationKind, StudentWallet } from "../domain/models";
+import { evaluateRulebook, ruleIsOnChain, type AdmissionRulebook } from "../domain/rulebooks";
+import { proofStatuses, verificationProofStatus, type ProofStatus } from "../domain/proofJourney";
+import { Icon } from "./Icon";
+import { Badge, Notice } from "./ui";
 
-const checks: { kind: ResultVerificationKind; title: string; icon: IconName; meaning: string }[] = [
-  { kind: "score_authenticity", title: "Score authenticity", icon: "chart", meaning: "Did the scores come from an authenticated exam provider?" },
-  { kind: "result_integrity", title: "Result integrity", icon: "file", meaning: "Does this report match the version committed to the blockchain?" },
-  { kind: "allocation_correctness", title: "Allocation correctness", icon: "university", meaning: "Was the allocation recomputed correctly using complete, authenticated inputs?" },
+const attestationSourceIsLive = (result: PrivateAdmissionResult) => result.attestation.source !== "fixture";
+
+const checks: { kind: ResultVerificationKind; title: string; description: string }[] = [
+  { kind: "score_authenticity", title: "Score authenticity", description: "An authorized exam issuer authenticated the scores." },
+  { kind: "result_integrity", title: "Result integrity", description: "The private result matches authenticated on-chain evidence." },
+  { kind: "allocation_correctness", title: "Allocation correctness", description: "The complete selection was independently recomputed." },
 ];
-
-export const NonAdmittedWallet = ({ wallet, result, institutions }: {
-  wallet: StudentWallet;
-  result: PrivateAdmissionResult;
-  institutions: readonly Institution[];
+const ProofBadge = ({ status }: { status: ProofStatus }) => {
+  const presentation = proofStatuses[status];
+  return <Badge tone={presentation.tone}><Icon name={presentation.icon} size={13} />{presentation.label}</Badge>;
+};
+export const NonAdmittedWallet = ({ wallet, result, institutions, rulebooks }: {
+  wallet: StudentWallet; result: PrivateAdmissionResult; institutions: readonly Institution[]; rulebooks: readonly AdmissionRulebook[];
 }) => {
-  const explanation = useRef<HTMLDetailsElement>(null);
-  const explanationTitle = useRef<HTMLHeadingElement>(null);
-  const understand = () => {
-    if (explanation.current) explanation.current.open = true;
-    explanationTitle.current?.focus({ preventScroll: true });
-    explanation.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  // An explicit page class avoids document-wide :has() matching for the wallet layout.
+  useLayoutEffect(() => {
+    document.body.classList.add("non-admitted-view");
+    return () => document.body.classList.remove("non-admitted-view");
+  }, []);
+  const choices = [...result.rankedPrograms].sort((a, b) => a.rank - b.rank);
+  const [selectedId, setSelectedId] = useState(choices[0]?.id);
+  const [proof, setProof] = useState<"scores" | "rules" | "calculation" | "eligibility" | "result">("result");
+  const trace = useRef<HTMLElement>(null);
+  const proofDialog = useRef<HTMLDialogElement>(null);
+  const choice = choices.find(item => item.id === selectedId) ?? choices[0];
+  const goTo = (section: HTMLElement | null) => { section?.focus({ preventScroll: true }); section?.scrollIntoView({ block: "start", behavior: "auto" }); };
+  if (!choice) return <div className="non-admitted-wallet"><h1>Your result. Clearly explained.</h1><p>No program trace is available for this report.</p></div>;
+  const rule = rulebooks.find(item => item.id === choice.rulebookId && item.version === choice.rulebookVersion && item.programId === choice.programId);
+  if (!rule) return <div className="non-admitted-wallet"><h1>Your result. Clearly explained.</h1><p>The rulebook version for this historical result is unavailable. No replacement rules have been applied.</p></div>;
+  const calculation = evaluateRulebook(rule, wallet.scores, wallet.qualifications);
+  const eligibility = calculation.status === "calculated" ? calculation.eligible ? "met" : "not_met" : "unavailable";
+  const ruleOnChain = ruleIsOnChain(rule);
+  const ruleVersion = `v${rule.version}`;
+  const ruleDate = new Date(rule.sealedAt ?? rule.createdAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+  const institution = institutions.find(item => item.id === choice.institutionId);
+  const openProof = (step: typeof proof) => { setProof(step); proofDialog.current?.showModal(); };
+  const openTrace = () => goTo(trace.current);
+  const resultOnChain = verificationProofStatus("result_integrity", result.verification.result_integrity) === "verified"
+    && attestationSourceIsLive(result) && !!result.publicCommitment.value && !!result.publicCommitment.chainReference;
+  const evidenceButton = (step: typeof proof) => {
+    const onChain = step === "result" ? resultOnChain : step === "rules" && ruleOnChain;
+    const contractRules = step === "rules" || step === "eligibility";
+    const label = onChain ? "On-chain" : ({ rules: "Smart contract rules", scores: "Score record", calculation: "Calculation", eligibility: "Contract criteria", result: "Result record" })[step];
+    return <button type="button" className={`evidence-badge${contractRules ? " contract-rules" : ""}${onChain ? " on-chain" : ""}`} onClick={() => openProof(step)} aria-label={`View ${step} Web3 proof`}><span className="evidence-badge-symbol"><Icon name={onChain || contractRules ? "check" : "file"} size={12} /></span>{label}<Icon name="chevron" size={12} /></button>;
   };
+  const choose = (item: RankedProgramResult) => setSelectedId(item.id);
   const attestation = result.attestation;
 
   return <div className="wallet-page non-admitted-wallet">
+    {attestation.previewRunId ? <div className="student-run-context"><Notice>Local admissions preview · Fictional inputs and allocation. This result references the exact rulebook versions used in run {attestation.previewRunId.slice(0,8)}.</Notice></div> : null}
     <div className="wallet-welcome"><span>Hi, {wallet.student.givenName}<span className="welcome-dot">.</span></span><span className="student-chip"><span className="avatar">{wallet.student.initials}</span>Demo student</span></div>
-    <div className="wallet-heading"><h1>Your result. Clearly explained.</h1><p>Your result matters, whether or not you received an offer.</p></div>
+    <div className="wallet-heading"><h1>Your result. Clearly explained.</h1><p>Your admission result, program scores and supporting evidence in one place.</p></div>
 
-    <div className="admission-result-layout">
+    <div className="result-overview">
       <section className="admission-result-card" aria-labelledby="admission-result-status">
-        <div className="result-card-heading"><span className="admission-report-icon"><Icon name="file" size={27} /></span><span>Admission Result</span><Badge tone="blue">Fictional report</Badge></div>
+        <div className="result-card-heading"><Icon name="file" size={23} /><span>Admission Result</span><Badge tone="blue">Fictional report</Badge></div>
         <p className="result-card-year">Academic year {attestation.academicYear}</p><h2 id="admission-result-status">Not admitted</h2><p className="result-card-round">{attestation.round}</p>
-        <p className="result-card-description">No admission offer was recorded for your ranked programs in this sample round. You can still review your scores and the evidence behind the result.</p>
-        <button className="button button-primary" type="button" onClick={understand}>Understand my result <Icon name="arrow" size={19} /></button>
-        <div className="result-attestation-reference"><span>Result attestation <strong>{attestation.id}</strong></span><span>{attestation.reportedOn}</span></div>
-        <p className="no-admission-right"><Icon name="info" size={16} />This is a result record, not an admission-right token. No seat is granted.</p>
+        <button type="button" className="button button-primary" onClick={openTrace}>See why <Icon name="arrow" size={18} /></button>
+        <div className="result-card-foot"><span>{attestation.id}</span><span>No admission right issued</span></div>
       </section>
-
-      <aside className="result-verification" aria-labelledby="result-verification-heading"><h2 id="result-verification-heading">Three different checks.</h2><p>A recorded result and a correct allocation are different claims.</p><div className="result-checks">{checks.map(check => {
-        const record = result.verification[check.kind];
-        const state = resultCheckState(check.kind, record);
-        return <details className="result-check" key={check.kind}><summary><span className="result-check-icon"><Icon name={check.icon} size={20} /></span><span>{check.title}</span><Badge tone={state === "verified" ? "green" : "neutral"}>{state === "verified" ? "Verified" : state === "unavailable" ? "Not available" : "Not verified"}</Badge><Icon className="disclosure-chevron" name="down" size={15} /></summary><div className="result-check-explanation"><p>{check.meaning}</p><p>{record.explanation}</p>{state === "verified" && record.evidence ? <dl className="detail-list"><div><dt>Checked</dt><dd>{record.evidence.checkedAt}</dd></div><div><dt>Evidence</dt><dd className="technical-value">{record.evidence.reference}</dd></div></dl> : <p className="fine-print">No completed verification is claimed for this check.</p>}</div></details>;
-      })}</div><p className="result-verification-note">All checks in this seeded example are unverified or unavailable. Recalculating a score does not authenticate it or prove an allocation was fair.</p></aside>
+      <aside className="result-roadmap" aria-label="Result timeline"><h2>Your result record</h2><p>The records behind this round.</p><ol>
+        <li><span className="roadmap-node"><Icon name="lock" size={19} /></span><span><strong>Program rules</strong><small>{ruleDate} · {ruleVersion}</small></span>{evidenceButton("rules")}</li>
+        <li><span className="roadmap-node"><Icon name="chart" size={19} /></span><span><strong>Program score calculated</strong><small>{calculation.status === "calculated" ? calculation.total.toFixed(2) + " / 100" : "Unavailable"} · {institution?.abbreviation}</small></span>{evidenceButton("calculation")}</li>
+        <li><span className="roadmap-node"><Icon name="file" size={19} /></span><span><strong>Admission result recorded</strong><small>{attestation.reportedOn} · Not admitted</small></span>{evidenceButton("result")}</li>
+      </ol></aside>
     </div>
 
-    <details ref={explanation} className="result-explanation" id="result-explanation"><summary><h2 ref={explanationTitle} tabIndex={-1}>What does this result tell me?</h2><Icon className="disclosure-chevron" name="down" size={19} /></summary><div><p>The fictional admissions authority reported no admission for any of your choices. The program scores below help you see how the sample criteria use your subject scores.</p><p>There is no authenticated selection explanation, cutoff record, or complete applicant dataset attached. Scores alone cannot establish why another applicant received a place. Capacity, preferences, eligibility, tie rules, and other applicants can affect an allocation.</p><p>A result commitment could later help detect changes to this report. It would not, by itself, establish that the original scores or admission decision were correct.</p></div></details>
-
-    <section className="ranked-results" aria-labelledby="ranked-results-title"><div className="section-heading"><div><h2 id="ranked-results-title">Your ranked programs</h2><p>Calculated for each program, using your fictional subject scores.</p></div><span className="private-record-label"><Icon name="lock" size={15} />Private account view</span></div><p className="criteria-demo-note">University names are illustrative. These weights and program outcomes are fictional, not official admission criteria.</p>
-      <ol className="ranked-program-list">{[...result.rankedPrograms].sort((a, b) => a.rank - b.rank).map(choice => {
-        const institution = institutions.find(item => item.id === choice.institutionId);
-        const calculation = calculateProgramScore(wallet.scores, choice.criteria);
-        return <li key={choice.id}><div className="ranked-program-top"><span className="preference-rank" aria-label={`Preference ${choice.rank}`}>{choice.rank}</span><div className="ranked-program-name"><h3>{choice.programName}</h3><p>{institution?.name ?? "Institution unavailable"}</p></div><div className="program-result-score"><span>Program score</span><strong>{calculation.status === "calculated" ? calculation.total.toFixed(2) : "Unavailable"}{calculation.status === "calculated" ? <small> / 100</small> : null}</strong></div></div><div className="ranked-program-bottom"><span>Not admitted · Reported demo outcome</span><span>Calculated locally, not independently verified</span></div>
-          <details className="program-calculation"><summary>How this score was calculated <Icon className="disclosure-chevron" name="down" size={15} /></summary>{calculation.status === "calculated" ? <><div className="calculation-table-wrap"><table><caption className="sr-only">Fictional scoring formula for preference {choice.rank}</caption><thead><tr><th scope="col">Subject</th><th scope="col">Reported score</th><th scope="col">Weight</th><th scope="col">Contribution</th></tr></thead><tbody>{calculation.terms.map(term => <tr key={`${term.subject}-${term.label}`}><th scope="row">{term.subject}<small>{term.label}</small></th><td>{term.score.toFixed(2)} / {term.maximum}</td><td>{term.weightPercent}%</td><td>{term.contribution.toFixed(2)}</td></tr>)}</tbody><tfoot><tr><th scope="row" colSpan={3}>Calculated program score</th><td>{calculation.total.toFixed(2)} / 100</td></tr></tfoot></table></div><p>Each contribution = reported subject score ÷ subject maximum × program weight. The total is rounded to two decimals after summing unrounded contributions.</p></> : <p>{calculation.reason}</p>}</details>
-        </li>;
-      })}</ol>
+    <section ref={trace} tabIndex={-1} className="proof-section trace-section" aria-labelledby="trace-heading"><div className="section-heading"><div><h2 id="trace-heading">Follow your result</h2><p>Three choices. A different calculation for each.</p></div><span className="trace-source">Illustrative Thai programs · Fictional rules</span></div>
+      <div className="trace-layout"><div className="program-choices" role="group" aria-label="Choose a ranked program">{choices.map(item => {
+        const pinned = rulebooks.find(book => book.id === item.rulebookId && book.version === item.rulebookVersion && book.programId === item.programId);
+        const score = pinned ? evaluateRulebook(pinned, wallet.scores, wallet.qualifications) : {status:"unavailable" as const};
+        return <button key={item.id} type="button" className={`program-choice${item.id === choice.id ? " selected" : ""}`} aria-pressed={item.id === choice.id} aria-controls="selected-program-trace" onClick={() => choose(item)}><span className="choice-top"><span className="preference-rank">{item.rank}</span><span>{institutions.find(university => university.id === item.institutionId)?.name ?? "Institution unavailable"}</span><Icon name="chevron" size={17} /></span><strong>{item.programName}</strong><span className="choice-score">{score.status === "calculated" ? score.total.toFixed(2) : "—"}<small> / 100</small></span><span className="choice-bottom"><span>Not admitted</span><span>{score.status === "calculated" ? "Trace available" : "Trace incomplete"}</span></span></button>;
+      })}</div>
+      <div className="selected-trace" id="selected-program-trace"><div className="trace-heading"><div><span>Preference {choice.rank} · {institution?.abbreviation}</span><h3>{choice.programName}</h3></div><span className="private-record-label"><Icon name="lock" size={13} />Private record</span></div>
+        <div className="calculation-trace" id="calculation-trace" key={choice.id}>
+          {calculation.status === "calculated" ? <>
+            <div className="trace-node"><span className="trace-node-dot">1</span><div><div className="trace-node-heading"><h4>Your exam scores</h4>{evidenceButton("scores")}</div><span className="trace-support">Fictional inputs · Issuer not authenticated</span><div className="score-inputs">{calculation.terms.map((term, i) => <div key={i}><span>{term.subject === "A-Level" ? term.label : term.subject}</span><strong>{term.score}<small> / {term.maximum}</small></strong></div>)}</div></div></div>
+            <div className="trace-node"><span className="trace-node-dot">2</span><div><div className="trace-node-heading"><h4>Program scoring rules</h4>{evidenceButton("rules")}</div><span className="trace-support">{ruleVersion} · Smart contract preview</span><div className="formula-terms">{calculation.terms.map((term, i) => <div key={i}><span>{term.subject === "A-Level" ? term.label : term.subject} × {term.weightPercent}%</span><strong>{term.contribution.toFixed(2)}</strong></div>)}</div><p className="trace-math-note">Each input is divided by its maximum, then multiplied by its weight. Add unrounded contributions; round the total to two decimals.</p></div></div>
+            <div className="trace-node"><span className="trace-node-dot">3</span><div><div className="trace-node-heading"><h4>Calculated from your scores</h4>{evidenceButton("calculation")}</div><strong className="trace-total">{calculation.total.toFixed(2)}<small> / 100</small></strong><span className="trace-support">Recalculated locally · Not issuer authentication</span></div></div>
+          </> : <p>{calculation.reason}</p>}
+          <div className="trace-node"><span className="trace-node-dot">4</span><div><div className="trace-node-heading"><h4>Eligibility in this example</h4>{evidenceButton("eligibility")}</div><strong className="eligibility-label">{eligibility === "met" ? "Meets sample minimums" : eligibility === "not_met" ? "Below a sample minimum" : "Requirements unavailable"}</strong><div className="eligibility-rules">{rule.components.filter(c => c.minimumPercent !== null).map(component => <span key={component.scoreId}>{component.label} ≥ {component.minimumPercent}%</span>)}{rule.qualifications.map(q=><span key={q.field}>Curriculum: {q.equals}</span>)}</div><span className="trace-support">Local threshold check · Eligibility does not guarantee a seat</span></div></div>
+          <div className="trace-node trace-outcome"><span className="trace-node-dot"><Icon name="file" size={16} /></span><div><div className="trace-node-heading"><h4>Reported admission outcome</h4>{evidenceButton("result")}</div><strong>Not admitted</strong><span className="trace-support">Fictional report · {attestation.reportedOn}</span><p>The score explains the calculation, not why you missed a seat. Other applicants, preferences, capacity and tie rules can affect selection.</p></div></div>
+        </div>
+      </div></div>
+      <div className="allocation-note"><Icon name="info" size={20} /><p><strong>About this outcome</strong>These scores show how each program’s formula was applied. An independent allocation check also needs the full applicant dataset, preferences, capacity and selection rules.</p></div>
     </section>
 
-    <div className="result-evidence-layout"><section className="commitment-explainer"><span className="story-symbol"><Icon name="globe" size={25} /></span><h2>A sealed reference to your result.</h2><p>A blockchain commitment is like a sealed reference to one version of a report. An authorized verifier can compare the private report with that reference to check whether it changed.</p><details className="result-commitment-details"><summary>How commitments work <Icon className="disclosure-chevron" name="down" size={16} /></summary><p>The report is combined with a random secret before a cryptographic fingerprint is made. Only the opaque commitment would be published. A verifier needs the private report and its secret to recompute and compare it with the recorded commitment.</p><p>A match establishes consistency with that version. It does not establish the truth of the report, authenticate exam scores, or prove admission fairness.</p></details><details className="result-commitment-details"><summary>View result evidence <Icon className="disclosure-chevron" name="down" size={16} /></summary><dl className="detail-list"><div><dt>Report source</dt><dd>{attestation.issuerLabel} · Fixture</dd></div><div><dt>Issuer signature</dt><dd>Not provided</dd></div><div><dt>Commitment</dt><dd className="technical-value">{result.publicCommitment.value ?? "Not created or published"}</dd></div><div><dt>Contract</dt><dd className="technical-value">{result.publicCommitment.chainReference?.contractAddress ?? "Not connected"}</dd></div><div><dt>Transaction</dt><dd className="technical-value">{result.publicCommitment.chainReference?.transactionHash ?? "Not available"}</dd></div><div><dt>Allocation evidence</dt><dd>Not available</dd></div></dl><p>This result attestation is a fictional private report, not a signed or on-chain-verified record.</p></details></section>
-      <aside className="result-privacy"><Icon name="lock" size={27} /><h2>Your result stays personal.</h2><p>Your name, individual scores, and ranked choices belong in your private account. They are not part of the public commitment.</p><p>This private report is not added to the public token verifier. No admission-right token is issued to an unsuccessful applicant.</p><span>Transparent evidence. Private student records.</span></aside>
-    </div>
-    <details className="score-drawer result-subject-scores"><summary><span className="score-drawer-icon"><Icon name="chart" size={22} /></span><span><strong>Your subject scores</strong><small>{wallet.scores.length} subjects · Fictional, unauthenticated records</small></span><Icon className="disclosure-chevron" name="down" size={18} /></summary><div className="score-subjects">{wallet.scores.map(score => <div key={score.id}><div><strong>{score.subject}</strong><span>{score.label}</span></div><p>{score.score.toFixed(2)}<small> / {score.maximum}</small></p></div>)}</div></details>
+    <div className="proof-bottom"><span><Icon name="lock" size={21} /><strong>Your result stays personal.</strong></span><p>Names, scores and ranked choices stay out of public blockchain records. This preview uses fictional data; no personal records are published.</p></div>
+    <dialog ref={proofDialog} className="rule-proof-dialog" aria-labelledby="web3-proof-title">
+      <div className="rule-dialog-top"><span className="proof-modal-symbol"><Icon name="shield" size={25} />Web3 evidence</span><button className="button button-secondary" type="button" onClick={() => proofDialog.current?.close()}>Close</button></div>
+      <h2 id="web3-proof-title">{({ scores: "Exam score evidence", rules: "Smart contract rules", calculation: "Score calculation evidence", eligibility: "Eligibility evidence", result: "Admission result evidence" })[proof]}</h2>
+      <p>{institution?.name} · {choice.programName}</p>
+      <Badge tone={(proof === "result" && resultOnChain) || (proof === "rules" && ruleOnChain) ? "green" : "blue"}><Icon name={(proof === "result" && resultOnChain) || (proof === "rules" && ruleOnChain) ? "check" : "info"} size={14} />{proof === "result" && resultOnChain ? "On-chain · Result integrity verified" : proof === "rules" && ruleOnChain ? "On-chain · Rule integrity verified" : "Demo evidence · No on-chain verification"}</Badge>
+      {proof === "rules" && <aside className="smart-contract-explainer" aria-labelledby="smart-contract-explainer-title"><span className="contract-explainer-icon"><Icon name="file" size={22} /></span><div><h3 id="smart-contract-explainer-title">A shared rulebook, written in code.</h3><p>A smart contract is a small program stored on a blockchain. FairPass is designed to read the program’s scoring weights from it, so you can check exactly which rules were used.</p><span className="contract-explainer-example"><Icon name="lock" size={13} />Scoring weights · Rule version · Program capacity</span></div></aside>}
+      <dl>
+        <div><dt>Record</dt><dd>{proof === "result" ? attestation.id : proof === "rules" ? rule.id : `${choice.id} / ${proof}`}</dd></div>
+        <div><dt>Source</dt><dd>{proof === "result" ? attestation.issuerLabel : "Fictional admissions fixture"}</dd></div>
+        {proof === "rules" && <><div><dt>Rule version</dt><dd>{ruleVersion}</dd></div><div><dt>{ruleOnChain ? "Published" : "Local version date"}</dt><dd>{rule.publication?.publishedAt ?? ruleDate}</dd></div><div><dt>Sample capacity</dt><dd>{rule.capacity} seats</dd></div><div><dt>Formula</dt><dd>{rule.components.map(term => `${term.label} × ${term.weightPercent}%`).join(" + ")}</dd></div></>}
+        {proof === "scores" && wallet.scores.map(score => <div key={score.id}><dt>{score.label}</dt><dd>{score.score} / {score.maximum} · Fictional exam record</dd></div>)}
+        {proof === "calculation" && <><div><dt>Calculated score</dt><dd>{calculation.status === "calculated" ? calculation.total.toFixed(2) + " / 100" : "Unavailable"}</dd></div><div><dt>Rule version</dt><dd>{ruleVersion}</dd></div><div><dt>Calculation source</dt><dd>Recalculated in this browser from the displayed subject inputs and weights.</dd></div></>}
+        {proof === "eligibility" && <><div><dt>Threshold check</dt><dd>{eligibility === "met" ? "Meets sample minimums" : eligibility === "not_met" ? "Below a sample minimum" : "Unavailable"}</dd></div><div><dt>Requirements</dt><dd>{rule.components.filter(c => c.minimumPercent !== null).map(c => `${c.label} ≥ ${c.minimumPercent}%`).join(" · ")}</dd></div></>}
+        {(proof === "rules" || proof === "result") ? <>
+          <div><dt>Network</dt><dd>Avalanche · {proof === "rules" && ruleOnChain ? "Fuji · Chain 43113" : proof === "result" && resultOnChain ? `Chain ${result.publicCommitment.chainReference?.chainId}` : "Not connected"}</dd></div>
+          <div><dt>Commitment</dt><dd>{(proof === "rules" ? rule.commitment : result.publicCommitment.value) ?? "Not published"}</dd></div>
+          <div><dt>Contract</dt><dd>{(proof === "rules" ? rule : result.publicCommitment).chainReference?.contractAddress ?? "Not available"}</dd></div>
+          <div><dt>Transaction</dt><dd>{(proof === "rules" ? rule : result.publicCommitment).chainReference?.transactionHash ?? "Not available"}</dd></div>
+          <div><dt>Block</dt><dd>{(proof === "rules" ? rule : result.publicCommitment).chainReference?.blockNumber ?? "Not available"}</dd></div>
+        </> : <div><dt>On-chain record</dt><dd>No separate on-chain proof is attached to this step.</dd></div>}
+      </dl>
+      <div className="modal-verification-checks">{checks.filter(check => proof === "result" || (proof === "scores" ? check.kind === "score_authenticity" : check.kind === "allocation_correctness")).map(check => <div key={check.kind}><strong>{check.title}</strong><ProofBadge status={verificationProofStatus(check.kind, result.verification[check.kind])} /><p>{result.verification[check.kind].explanation}</p></div>)}</div>
+      <p>{proof === "rules" ? "This preview shows the scoring weights intended to be read from the program’s smart contract. The current data is fictional; no deployed contract or authenticated rule timestamp is connected." : proof === "result" ? "Result integrity concerns the recorded version. It does not independently establish score authenticity or allocation correctness. This result record grants no admission right." : "This step uses the displayed fictional inputs. A local calculation does not authenticate those inputs or verify the complete admissions allocation."}</p>
+    </dialog>
   </div>;
 };

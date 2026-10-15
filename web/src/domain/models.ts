@@ -1,3 +1,4 @@
+import type { AdmissionRulebook } from "./rulebooks";
 /** Shared domain models. Personal records belong to a private API;
  * public registry projections must omit student identity and exam scores. */
 export type CredentialStatus = "active" | "withdrawn" | "revoked";
@@ -26,6 +27,7 @@ export interface PublicCredential {
 export interface StudentWallet {
   student: { id: string; givenName: string; fullName: string; initials: string };
   scores: readonly ScoreRecord[];
+  qualifications: Record<string, string>;
   admission: { programId: string; status: AdmissionStatus; confirmedOn: string }
     | { status: "not_admitted"; result: PrivateAdmissionResult };
   credentials: readonly PublicCredential[];
@@ -43,13 +45,16 @@ export interface AdmissionResultAttestation {
   issuerLabel: string;
   source: EvidenceSource;
   grantsAdmissionRight: false;
+  previewRunId?: string;
 }
 export interface RankedProgramResult {
   id: string;
   rank: number;
   institutionId: string;
   programName: string;
-  criteria: readonly { scoreId: string; weightPercent: number }[];
+  programId: string;
+  rulebookId: string;
+  rulebookVersion: number;
   reportedOutcome: "not_admitted";
 }
 export type ResultVerificationKind = "score_authenticity" | "result_integrity" | "allocation_correctness";
@@ -90,6 +95,7 @@ export interface AuditEvent {
 
 /** Presentation input; can be composed from fixtures or future service adapters. */
 export interface FairPassViewData {
+  rulebooks: readonly AdmissionRulebook[];
   institution: Institution;
   institutions: readonly Institution[];
   programs: readonly Program[];
