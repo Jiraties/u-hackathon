@@ -1,0 +1,11 @@
+import { readConfig } from './config.js';
+import { createChain } from './chain.js';
+import { connectStore } from './store.js';
+import { createApp } from './app.js';
+const config = readConfig();
+if (new Set([config.ADMIN_API_TOKEN, config.INTEGRATION_API_TOKEN, config.ISSUER_API_TOKEN]).size !== 3) throw new Error('Use three distinct API tokens');
+const chain = createChain(config);
+const { store, close } = await connectStore(config.MONGODB_URI, config.MONGODB_DATABASE);
+await chain.ready();
+const server = createApp(config, store, chain).listen(config.PORT, config.HOST, () => console.log(`FairPass API listening on ${config.HOST}:${config.PORT} (chain ${config.CHAIN_ID})`));
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { server.close(() => { void close().then(() => process.exit(0)); }); });

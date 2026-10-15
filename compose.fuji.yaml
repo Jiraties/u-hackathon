@@ -1,0 +1,31 @@
+# Use with compose.yaml. Requires Docker Compose >= 2.24.4 for !override.
+name: fairpass-fuji
+services:
+  chain:
+    profiles: [local-chain-disabled]
+  init:
+    profiles: [local-chain-disabled]
+  backend:
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment: !override
+      FAIRPASS_EXPECT_CHAIN_ID: '43113'
+      FAIRPASS_LOCAL: 'false'
+      FAIRPASS_LOAD_DEPLOYMENT: 'false'
+      HOST: 0.0.0.0
+      PORT: '3001'
+      MONGODB_URI: mongodb://mongo:27017
+    depends_on: !override
+      mongo:
+        condition: service_healthy
+  tools:
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment: !override
+      FAIRPASS_EXPECT_CHAIN_ID: '43113'
+      FAIRPASS_LOCAL: 'false'
+      FAIRPASS_LOAD_DEPLOYMENT: 'false'
+      MONGODB_URI: mongodb://mongo:27017
+      API_URL: http://backend:3001

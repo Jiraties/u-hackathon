@@ -1,0 +1,27 @@
+import 'dotenv/config';
+import fs from 'node:fs';
+import { createPublicClient, createWalletClient, defineChain, http, isAddress, type Hex, type Address } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+const rpc = process.env.RPC_URL;
+const chainId = Number(process.env.CHAIN_ID);
+if (!rpc || ![31337, 43113, 43114].includes(chainId)) throw new Error('Set RPC_URL and CHAIN_ID (31337, 43113 or 43114)');
+if (chainId === 43114 && process.env.ALLOW_MAINNET !== 'true') throw new Error('Mainnet deployment requires ALLOW_MAINNET=true');
+const account = privateKeyToAccount(process.env.ADMIN_PRIVATE_KEY as Hex);
+const authority = privateKeyToAccount(process.env.AUTHORITY_PRIVATE_KEY as Hex);
+const admin = process.env.ADMIN_ADDRESS || account.address;
+if (!isAddress(admin)) throw new Error('Invalid ADMIN_ADDRESS');
+const chain = defineChain({ id: chainId, name: 'FairPass', nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 }, rpcUrls: { default: { http: [rpc] } } });
+const client = createPublicClient({ chain, transport: http(rpc) });
+if (await client.getChainId() !== chainId) throw new Error('RPC chain ID mismatch');
+const wallet = createWalletClient({ account, chain, transport: http(rpc) });
+const artifact = JSON.parse(fs.readFileSync('artifacts/FairPassRegistry.json', 'utf8'));
+const hash = await wallet.deployContract({ abi: artifact.abi, bytecode: artifact.bytecode, args: [admin as Address, authority.address] });
+console.log('Deployment transaction:', hash);
+const receipt = await client.waitForTransactionReceipt({ hash, timeout: 120000 });
+if (receipt.status !== 'success' || !receipt.contractAddress) throw new Error('Deployment failed');
+const manifest = { chainId, contractAddress: receipt.contractAddress, deploymentBlock: String(receipt.blockNumber), transactionHash: hash,
+  admin, authority: authority.address, compiler: '0.8.28', evmVersion: 'shanghai', optimizerRuns: 200 };
+fs.mkdirSync('deployments', { recursive: true });
+fs.writeFileSync(`deployments/${chainId}-${receipt.contractAddress}.json`, JSON.stringify(manifest, null, 2));
+console.log(JSON.stringify(manifest, null, 2));
+console.log(`Set CONTRACT_ADDRESS=${receipt.contractAddress} and DEPLOYMENT_BLOCK=${receipt.blockNumber} in .env`);

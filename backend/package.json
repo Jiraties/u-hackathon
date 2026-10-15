@@ -1,0 +1,51 @@
+{
+  "name": "@fairpass/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node --import tsx --watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "compile": "node --import tsx scripts/compile.ts",
+    "chain": "hardhat node",
+    "deploy": "node --import tsx scripts/deploy.ts",
+    "bootstrap": "node --import tsx scripts/bootstrap.ts",
+    "demo": "node --import tsx scripts/demo.ts",
+    "check": "tsc --noEmit",
+    "test": "npm run compile && npm run build && node --import tsx --test test/*.test.ts",
+    "reallocate": "node --import tsx scripts/reallocate.ts",
+    "verify": "node --import tsx scripts/verify.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0",
+    "cors": "2.8.5",
+    "dotenv": "16.6.1",
+    "express": "5.1.0",
+    "express-rate-limit": "8.7.1",
+    "helmet": "8.1.0",
+    "mongodb": "6.20.0",
+    "viem": "2.57.7",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.3",
+    "@types/node": "22.18.10",
+    "@types/supertest": "6.0.3",
+    "hardhat": "3.19.0",
+    "mongodb-memory-server": "11.3.0",
+    "solc": "0.8.28",
+    "supertest": "7.1.4",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "solc": {
+      "tmp": "0.2.7"
+    }
+  }
+}

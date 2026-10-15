@@ -7,6 +7,13 @@ system or a deployed blockchain registry.
 The approved visual standard is documented in [DESIGN.md](DESIGN.md). Read it
 before making frontend design changes.
 
+## Docker deployment
+
+Run the full local stack with `docker compose up --build -d --wait` and open
+`http://localhost:8080`. Includes the existing frontend, API, MongoDB, local EVM,
+and automatic contract deployment. Frontend pages retain their existing demo data.
+See [DOCKER.md](DOCKER.md) for live API tests and Avalanche Fuji deployment.
+
 ## Run locally
 
 ```sh

@@ -1,0 +1,9 @@
+services:
+  mongo:
+    image: mongo:7.0
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - fairpass-mongo:/data/db
+volumes:
+  fairpass-mongo:

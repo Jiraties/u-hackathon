@@ -1,0 +1,119 @@
+name: fairpass
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+
+x-local-env: &local-env
+  FAIRPASS_LOCAL: 'true'
+  FAIRPASS_LOAD_DEPLOYMENT: 'true'
+  CHAIN_ID: '31337'
+  RPC_URL: http://chain:8545
+  HOST: 0.0.0.0
+  PORT: '3001'
+  MONGODB_URI: mongodb://mongo:27017
+  CORS_ORIGIN: http://localhost:${WEB_PORT:-8080}
+  # Public local-development credentials; Fuji uses backend/.env instead.
+  ADMIN_API_TOKEN: fairpass-local-admin-token-not-for-public-use
+  INTEGRATION_API_TOKEN: fairpass-local-integration-token-not-for-public-use
+  ISSUER_API_TOKEN: fairpass-local-issuer-token-not-for-public-use
+  DEMO_PASSWORD: fairpass-local-fictional-password
+  API_URL: http://backend:3001
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - '${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080'
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/healthz]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, 'quit(db.adminCommand({ping:1}).ok ? 0 : 1)']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  chain:
+    build:
+      <<: *backend-build
+      target: tooling
+    environment:
+      FAIRPASS_LOCAL: 'false'
+    command: [node_modules/hardhat/dist/src/cli.js, node, --hostname, 0.0.0.0]
+    ports:
+      - '127.0.0.1:${CHAIN_PORT:-18546}:8545'
+    healthcheck:
+      test: [CMD, node, docker/health.mjs, chain]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  init:
+    build:
+      <<: *backend-build
+      target: tooling
+    environment:
+      <<: *local-env
+      FAIRPASS_LOAD_DEPLOYMENT: 'false'
+    command: [docker/init-local.mjs]
+    volumes:
+      - deployments:/app/deployments
+    depends_on:
+      chain:
+        condition: service_healthy
+    restart: 'no'
+
+  backend:
+    build:
+      <<: *backend-build
+      target: runtime
+    environment: *local-env
+    volumes:
+      - deployments:/app/deployments:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, node, docker/health.mjs, api]
+      interval: 15s
+      timeout: 12s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 150s
+    restart: unless-stopped
+
+  tools:
+    profiles: [tools]
+    build:
+      <<: *backend-build
+      target: tooling
+    environment: *local-env
+    volumes:
+      - deployments:/app/deployments
+    command: [dist/scripts/demo.js]
+    restart: 'no'
+
+volumes:
+  mongo-data:
+  deployments:

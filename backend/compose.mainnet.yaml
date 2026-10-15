@@ -1,0 +1,12 @@
+name: fairpass-mainnet
+
+services:
+  backend:
+    environment:
+      FAIRPASS_EXPECT_CHAIN_ID: '43114'
+      MONGODB_DATABASE: fairpass_mainnet
+
+  tools:
+    environment:
+      FAIRPASS_EXPECT_CHAIN_ID: '43114'
+      MONGODB_DATABASE: fairpass_mainnet

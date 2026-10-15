@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/dist
+**/cache
+**/artifacts
+**/deployments
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/.aws
+**/.codex
+**/.agents
+**/.DS_Store
