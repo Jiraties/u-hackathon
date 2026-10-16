@@ -25,7 +25,10 @@
     "zk:deploy": "node --import tsx scripts/deploy-zk.ts",
     "zk:commit-exams": "node --import tsx scripts/commit-exams.ts",
     "demo:plan": "node --import tsx scripts/plan-demo-world.ts",
-    "demo:prepare-signers": "node --import tsx scripts/prepare-demo-signers.ts"
+    "demo:prepare-signers": "node --import tsx scripts/prepare-demo-signers.ts",
+    "demo:local": "node --import tsx scripts/prepare-demo-world-local.ts",
+    "demo:export": "node --import tsx scripts/export-demo-evidence.ts",
+    "demo:browser": "node --import tsx scripts/demo-world-browser.ts"
   },
   "dependencies": {
     "@aztec/bb.js": "5.2.1",

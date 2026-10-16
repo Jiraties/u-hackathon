@@ -1,3 +1,4 @@
+import DemoPage from "./demo/DemoPage";
 import { useAppRouter } from "./router";
 import LiveApp from "./LiveApp";
 import { useRuleWorkspace } from "./services/ruleWorkspace";
@@ -35,6 +36,7 @@ const PreviewApp = () => {
 };
 const App = () => {
   const navigation = useAppRouter();
+  if (window.location.pathname === "/demo" || window.location.pathname.startsWith("/demo/")) return <DemoPage key={navigation}/>;
   return new URLSearchParams(window.location.search).get("preview") === "1"
     ? <PreviewApp key={navigation}/> : <LiveApp key={navigation}/>;
 };

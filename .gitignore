@@ -16,3 +16,6 @@ backend/deployments/
 
 # Local deployment signing keys (never commit).
 backend/.secrets/
+
+# Local design inspection artifacts
+.taste-skill/

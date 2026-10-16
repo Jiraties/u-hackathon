@@ -1,3 +1,8 @@
+import {DemoWorldService} from '../src/demo/world.js';
+import {ScoringService} from '../src/zk/service.js';
+import {evidenceManifestSchema} from '../src/demo/replay.js';
+import {definitionDigest,DEFINITION_ID} from '../src/demo/scenario.js';
+import {createHash} from 'node:crypto';
 import { createDemoScenario } from '../src/demo/scenario.js';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -10,7 +15,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
-import { createPublicClient, createWalletClient, defineChain, http, type Hex, type Abi, type Address, decodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, defineChain, http, type Hex, type Abi, type Address, decodeFunctionData,keccak256 } from 'viem';
 import { ScoringProver } from '../src/zk/prover.js';
 import { freshField, fieldHex, scoringPolicyHash, versionedProgramId, fixedScore, type Policy } from '../src/zk/encoding.js';
 import { linkBytecode } from '../src/zk/artifacts.js';
@@ -27,8 +32,9 @@ test('real Noir ZK proof → Solidity verification → gated issuance; malicious
   const metrics:Record<string,unknown>={toolchain:{noir:'1.0.0-rc.5',barretenberg:'5.2.1',target:'evm (zero knowledge enabled)'},gas:{}};
   const gas=metrics.gas as Record<string,string>;
   const artifact=(name:string)=>JSON.parse(fs.readFileSync(`artifacts/${name}.json`,'utf8')) as {abi:Abi;bytecode:Hex};
+  const deployments:any[]=[];
   const libraries:Record<string,Address>={};
-  const deploy=async(name:string,args:unknown[])=>{const a=artifact(name);const hash=await wallet.deployContract({account:admin,abi:a.abi,bytecode:linkBytecode(a,libraries),args});const r=await client.waitForTransactionReceipt({hash});assert.equal(r.status,'success');gas[`deploy_${name}`]=String(r.gasUsed);return r.contractAddress!;};
+  const deploy=async(name:string,args:unknown[])=>{const a=artifact(name);const hash=await wallet.deployContract({account:admin,abi:a.abi,bytecode:linkBytecode(a,libraries),args});const r=await client.waitForTransactionReceipt({hash});assert.equal(r.status,'success');gas[`deploy_${name}`]=String(r.gasUsed);deployments.push({name,address:r.contractAddress,transactionHash:hash,blockNumber:String(r.blockNumber),runtimeCodeHash:keccak256((await client.getCode({address:r.contractAddress!}))!)});return r.contractAddress!;};
   libraries.RelationsLib=await deploy('RelationsLib',[]);
   libraries.ZKTranscriptLib=await deploy('ZKTranscriptLib',[]);
   const verifier=await deploy('HonkVerifier',[]);const registry=await deploy('FairPassRegistryV2',[admin,authority,exam,verifier]);
@@ -103,12 +109,14 @@ test('real Noir ZK proof → Solidity verification → gated issuance; malicious
   const id2=randomId(),s2=await prover.statement(dataset,dataset.records[1],policy,{chainId:31337,registry,program,rulesHash,resultId:id2}),p2=await prover.prove(s2);
   await write(issuer,'verifyScoring',[id2,program,dataset._id,dataset.records[1].subject,s2.context[15],s2.context[16],true,p2.proof]);
   await write(authority,'recordResult',[id2,randomId(),dataset.records[1].subject,program,2027,true]);await write(authority,'confirmResult',[id2]);
+  const capacityBlock=String(await client.getBlockNumber({cacheTime:0}));
   await assert.rejects(write(issuer,'issueRight',[randomId(),id2])); // valid proof, capacity exhausted
   const id3=randomId(),s3=await prover.statement(dataset,dataset.records[2],policy,{chainId:31337,registry,program,rulesHash,resultId:id3}),p3=await prover.prove(s3);
   assert.equal(s3.calculated.eligible,false);
   await write(issuer,'verifyScoring',[id3,program,dataset._id,dataset.records[2].subject,s3.context[15],s3.context[16],false,p3.proof]);
   await write(authority,'recordResult',[id3,randomId(),dataset.records[2].subject,program,2027,true]);await write(authority,'confirmResult',[id3]);
   await write(issuer,'changeStatus',[right,3,randomId()]);await write(issuer,'authorizeReallocation',[program,1,randomId()]);
+  const eligibilityBlock=String(await client.getBlockNumber({cacheTime:0}));
   await assert.rejects(write(issuer,'issueRight',[randomId(),id3])); // authenticated selection cannot override ineligible proof
   // Private scores are absent from public inputs, ABI calldata fields and events.
   assert.ok(student.scores.every(score=>!proof.publicInputs.some(v=>BigInt(v)===BigInt(score))));
@@ -186,6 +194,7 @@ test('real Noir ZK proof → Solidity verification → gated issuance; malicious
   assert.equal(admitted.scoring[0].status,'verified');assert.equal(admitted.scoring[0].eligible,true);
   const nonAdmittedWallet=(await request(app).get('/v1/me/wallet').auth(notAdmittedToken,{type:'bearer'}).expect(200)).body;
   assert.equal(nonAdmittedWallet.records[0].scoring[0].status,'verified');assert.equal(nonAdmittedWallet.records[0].scoring[0].eligible,false);assert.equal(nonAdmittedWallet.records[0].credential,null);
+  assert.equal((await request(app).get(`/v1/me/results/${admitted.resultId}/proof`).auth(admittedToken,{type:'bearer'}).expect(200)).body.verification.scoreAuthenticity,'verified');
   const issued=(await request(app).post(`/v1/issuer/results/${admitted.resultId}/issue`).auth(officer,{type:'bearer'}).send({}).expect(200)).body;
   const publicRecord=(await request(app).get(`/v1/public/verify/${issued.credentialId}`).expect(200)).body;
   const publicJSON=JSON.stringify(publicRecord);
@@ -232,6 +241,31 @@ test('real Noir ZK proof → Solidity verification → gated issuance; malicious
   }
   assert.equal(verifiedClaims,27);assert.equal(issuedRights,6);
   for(const programId of worldPrograms)assert.equal((await read('programs',[programId]))[3],2);
+  // The public replay reconciles actual code/receipts and never receives signer capabilities.
+  const logs=await client.getContractEvents({address:registry,abi,fromBlock:0n,toBlock:await client.getBlockNumber({cacheTime:0})});
+  const kinds:Record<string,string>={ProgramRegistered:'program',ScoringPolicyRegistered:'program',RulesLocked:'program',ExamDatasetCommitted:'dataset',ScoringVerified:'scoring',ResultRecorded:'result',ConfirmationRecorded:'confirmation',RightIssued:'credential'};
+  const evidence=logs.filter(l=>!!kinds[l.eventName!]).map(log=>{const args=log.args as any;const kind=kinds[log.eventName!];return {kind,reference:log.eventName==='ScoringVerified'?args.resultId:kind==='credential'?args.credentialId:args.program??args.dataset??args.resultId,eventName:log.eventName,logIndex:log.logIndex,...(kind==='scoring'?{programId:args.program}:{}),receipt:{chainId:31337,contractAddress:registry,transactionHash:log.transactionHash,blockNumber:String(log.blockNumber)}};});
+  const bindings=[];for(const student of world.expected){const doc=await store.results.findOne({studentId:student.studentId});bindings.push({id:student.studentId,resultId:doc!.resultId,credentialId:doc!.credentialId});}
+  const manifest=evidenceManifestSchema.parse({schema:1,definitionId:DEFINITION_ID,definitionDigest,instanceId:'integration',chainId:31337,registry,verifier,verificationKeySha256:createHash('sha256').update(fs.readFileSync('../zk/scoring/target/vk')).digest('hex'),deploymentBlock:'0',recordedAt:new Date().toISOString(),roles:{admin,authority,issuer,exam},deployments,evidence,bindings:{datasetId:worldDataset._id,programIds:worldPrograms,students:bindings},security:{deployment:deployments[3],programId:program,ineligible:{resultId:id3,credentialId:randomId(),blockNumber:eligibilityBlock,expectedError:'ProofRequired'},eligible:{resultId:id2,credentialId:randomId(),blockNumber:capacityBlock,expectedError:'Capacity'}}});
+  const manifestPath=`cache/demo-world-${randomId()}.json`;fs.writeFileSync(manifestPath,JSON.stringify(manifest));t.after(()=>fs.rmSync(manifestPath,{force:true}));
+  const replayConfig={...config,DEMO_READ_ONLY:true,DEMO_WORLD_INSTANCE:'integration',DEMO_REPLAY_MANIFEST:manifestPath,RPC_URL:chain.rpcUrls.default.http[0]} as Config;
+  const publicApp=createApp(replayConfig,store,gateway);t.after(()=>publicApp.locals.closeScoring());
+  const replay=(await request(publicApp).get('/v1/demo/world').expect(200)).body;
+  assert.equal(replay.state,'verified');assert.equal(replay.mode,'local');assert.equal(replay.students.length,9);
+  const replayJSON=JSON.stringify(replay);for(const privateField of ['totalSalt','record_salt','siblings','passwordHash','witnessInput'])assert.ok(!replayJSON.includes(privateField));
+  for(const student of replay.students)assert.equal(student.proof.salt,undefined);
+  const nonce=await client.getTransactionCount({address:issuer,blockTag:'pending'});
+  const changed=(await request(publicApp).get('/v1/demo/world/experiments/score?score=89.25').expect(200)).body;assert.equal(changed.outcome,'rejected');assert.equal(changed.submittedTransaction,false);
+  const originalResponse=await request(publicApp).get('/v1/demo/world/experiments/score?score=88.25');assert.equal(originalResponse.status,200,JSON.stringify(originalResponse.body));assert.equal(originalResponse.body.outcome,'accepted');
+  for(const kind of ['eligibility','capacity'])assert.equal((await request(publicApp).get('/v1/demo/world/experiments/'+kind).expect(200)).body.outcome,'rejected');
+  await request(publicApp).post('/v1/office/simulations').send({}).expect(403);assert.equal(await client.getTransactionCount({address:issuer,blockTag:'pending'}),nonce);
+  const checker=new DemoWorldService(replayConfig,store,gateway,new ScoringService(store,gateway));t.after(()=>checker.close());
+  await assert.rejects(checker.reconcile({...manifest,verificationKeySha256:'0'.repeat(64)}));
+  await assert.rejects(checker.reconcile({...manifest,deployments:manifest.deployments!.map((d,i)=>i===0?{...d,runtimeCodeHash:randomId()}:d)}));
+  await assert.rejects(checker.reconcile({...manifest,evidence:manifest.evidence.map((e,i)=>i===0?{...e,logIndex:9999}:e)}));
+  const offline=new DemoWorldService({...replayConfig,RPC_URL:'http://127.0.0.1:9'},store,gateway,new ScoringService(store,gateway));t.after(()=>offline.close());assert.equal((await offline.snapshot()).state,'unavailable');
+  await write(exam,'revokeExamDataset',[worldDataset._id]);
+  const stale=new DemoWorldService(replayConfig,store,gateway,new ScoringService(store,gateway));t.after(()=>stale.close());assert.equal((await stale.snapshot()).state,'stale');
   metrics.demoWorldGas=Object.fromEntries(Object.entries(apiGas).map(([method,value])=>[method,{transactions:value.transactions-(beforeWorldGas[method]?.transactions??0),gas:String(value.gas-(beforeWorldGas[method]?.gas??0n))}]));
   metrics.demoWorld={students:9,programs:3,realVerifiedClaims:verifiedClaims,issuedRights,externalTransactionsSubmitted:0};
   fs.mkdirSync('artifacts/zk',{recursive:true});fs.writeFileSync('artifacts/zk/measurements.json',JSON.stringify(metrics,null,2));

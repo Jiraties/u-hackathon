@@ -1,5 +1,7 @@
 # Demo World V2 — implementation preparation
 
+> This is the retained preparation-phase report. For the implemented Demo World, current run instructions and fresh validation, see [EXPERIENCE.md](EXPERIENCE.md) and [VALIDATION.md](VALIDATION.md). The prepared scenario and Fuji plan remain unchanged.
+
 Prepared October 16, 2026. No Fuji transactions, funding, deployments or V1 changes were performed. Existing running Docker applications were not restarted or migrated.
 
 ## Implemented and validated locally

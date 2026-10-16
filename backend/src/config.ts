@@ -6,6 +6,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017'),
   MONGODB_DATABASE: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('fairpass'),
+  DEMO_WORLD_INSTANCE: z.string().regex(/^[a-zA-Z0-9-]{1,40}$/).optional(),
   DEMO_READ_ONLY: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   ISSUER_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   DEMO_REPLAY_MANIFEST: z.string().min(1).optional(),

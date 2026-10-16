@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {chromium} from 'playwright';
+const base=process.env.DEMO_WORLD_URL??'http://localhost:8082';
+if(!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(base))throw Error('Browser checks target the isolated local demo only');
+const api=await(await fetch(base+'/api/v1/demo/world')).json();assert.equal(api.state,'verified');assert.equal(api.mode,'local');
+const rpc=async(method:string)=>await(await fetch('http://127.0.0.1:18548',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params:[]})})).json();
+const before=(await rpc('eth_blockNumber')).result;
+const browser=await chromium.launch({headless:true});const captures='cache/demo-world-browser';fs.mkdirSync(captures,{recursive:true});
+try{
+ for(const width of [1440,768,390]){
+  const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:width===768?'reduce':'no-preference'});const errors:string[]=[],writes:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().startsWith(base+'/api/')&&r.method()!=='GET')writes.push(r.method()+' '+r.url());});
+  const capture=async(name:string)=>{await page.screenshot({path:`${captures}/${name}-${width}.png`,fullPage:true,animations:'disabled'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`Overflow: ${name} ${width}`);};
+  await page.goto(base+'/demo');await page.getByRole('heading',{name:'See how trust is built.'}).waitFor();await page.evaluate(()=>{(window as any).demoRouterMarker=42;});await capture('welcome');
+  await page.getByRole('link',{name:'Start the story'}).click();await page.getByRole('heading',{name:'The rules come first.'}).waitFor();assert.equal(await page.evaluate(()=>(window as any).demoRouterMarker),42);
+  await page.getByRole('button',{name:'Inspect the rulebook'}).click();await page.getByRole('dialog').getByRole('heading',{name:'The evidence behind the story.'}).waitFor();await page.getByRole('button',{name:'Close blockchain evidence'}).click();await capture('rules');
+  await page.getByRole('link',{name:'Private scores, public proof'}).click();await page.getByRole('button',{name:'Reveal the public proof'}).click();await page.getByText('Verified on local test chain.',{exact:true}).waitFor();await capture('proof');
+  await page.getByRole('link',{name:'Meet the applicants'}).click();await page.getByRole('button',{name:'Show recorded allocations'}).click();await page.locator('.demo-seat.filled').first().waitFor();assert.equal(await page.locator('.demo-seat.filled').count(),6);await capture('allocation');
+  await page.locator('.demo-outside-seats').getByRole('button').filter({hasText:'Narin'}).click();await page.getByRole('heading',{name:'Narin’s wallet'}).waitFor();await page.getByRole('heading',{name:'Not admitted',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Request confirmation',exact:true}).count(),0);await capture('narin');
+  const selector=page.getByLabel('Open a student’s wallet');await selector.selectOption({label:'Dao'});await page.getByRole('heading',{name:'Dao’s wallet'}).waitFor();await page.getByText('A strong total, but the TGAT minimum was not met.',{exact:true}).waitFor();await selector.selectOption({label:'Pim'});await page.getByRole('heading',{name:'Pim’s wallet'}).waitFor();await page.getByRole('article',{name:'Your admission token'}).waitFor();await capture('pim');
+  await page.reload();await page.getByRole('heading',{name:'Pim’s wallet'}).waitFor();
+  await page.getByRole('link',{name:'Try to break the rules'}).click();await page.getByLabel('TGAT / 100').fill('90.25');await page.getByRole('button',{name:'Check the changed score'}).click();await page.getByText('Verification failed. The evidence doesn’t match.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Break a rule',exact:true}).click();await page.getByRole('button',{name:'Check the eligibility guard'}).click();await page.getByText('The enforced eligibility rule blocked issuance.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'One more seat',exact:true}).click();await page.getByRole('button',{name:'Check the capacity guard'}).click();await page.getByText('Both places are occupied. The contract blocked a third right.',{exact:true}).waitFor();await capture('guards');
+  await page.getByRole('link',{name:'Restart demo',exact:true}).first().click();await page.getByRole('heading',{name:'See how trust is built.'}).waitFor();const progress=await page.evaluate(()=>localStorage.getItem('fairpass-demo-journey-v1'));assert.ok(!progress||!JSON.parse(progress).visited.length);
+  assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>localStorage.getItem('fairpass-session-student')),null);console.log(`Demo World browser passed at ${width}px: five chapters, six seats, both wallets, three real checks, restart and no API writes.`);await page.close();
+ }
+ assert.equal((await rpc('eth_blockNumber')).result,before,'Public replay must not mine or submit a transaction');
+ // A stale/unavailable snapshot cannot retain a previous successful claim.
+ const page=await browser.newPage();await page.goto(base+'/demo/verify');await page.getByRole('button',{name:'Check the changed score'}).click();await page.getByText('Verification failed. The evidence doesn’t match.',{exact:true}).waitFor();await page.route('**/api/v1/demo/world',route=>route.fulfill({json:{...api,observedAt:new Date().toISOString(),state:'unavailable',mode:'preparation',reason:'Evidence cannot be confirmed.',students:[],programs:[],dataset:null,manifest:null,securityAvailable:false}}));await page.getByRole('button',{name:'Refresh demo evidence'}).click();await page.getByText('Verification unavailable',{exact:true}).waitFor();await page.getByRole('button',{name:'Check the changed score'}).waitFor();assert.equal(await page.getByRole('button',{name:'Check the changed score'}).isDisabled(),true);assert.equal(await page.getByText('Verification failed. The evidence doesn’t match.',{exact:true}).count(),0);await page.close();
+}finally{await browser.close();}

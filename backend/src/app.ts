@@ -1,3 +1,4 @@
+import { DemoWorldService } from './demo/world.js';
 import { loadReplayManifest, scenarioProjection, PERSPECTIVES } from './demo/replay.js';
 import { DEFINITION_ID } from './demo/scenario.js';
 import { ScoringService } from './zk/service.js';
@@ -37,7 +38,8 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   const app = express();
   const sessionTokens = createSessionTokens(config);
   const scoring = new ScoringService(store, chain);
-  app.locals.closeScoring = () => scoring.close();
+  const world = new DemoWorldService(config,store,chain,scoring);
+  app.locals.closeScoring = async () => {await world.close();await scoring.close();};
   const replayManifest = loadReplayManifest(config.DEMO_REPLAY_MANIFEST);
   const zkEnabled = config.REGISTRY_VERSION === 2;
   const localDemo = process.env.FAIRPASS_LOCAL === 'true' && config.CHAIN_ID === 31337;
@@ -281,6 +283,12 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     res.status(201).json(output);
   });
 
+  app.get('/v1/demo/world',async(_req,res)=>res.json(await world.snapshot()));
+  app.get('/v1/demo/world/experiments/:kind',rateLimit({windowMs:60000,limit:12}),async(req,res)=>{
+    const kind=z.enum(['score','eligibility','capacity']).parse(req.params.kind);
+    const score=kind==='score'?z.coerce.number().min(0).max(100).refine(n=>Math.abs(n*100-Math.round(n*100))<1e-7).parse(req.query.score):undefined;
+    res.json(await world.experiment(kind,score));
+  });
   app.get('/v1/demo/scenarios/:definition/:perspective',async(req,res)=>{
     if(req.params.definition!==DEFINITION_ID){res.status(404).json({error:'scenario_not_found'});return;}
     const perspective=z.enum(PERSPECTIVES).parse(req.params.perspective);
@@ -386,11 +394,12 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   app.get('/v1/public/capabilities',async(_req,res)=>res.json({registryVersion:zkEnabled?2:1,scoringProofs:zkEnabled,verifier:zkEnabled?await chain.read('scoringVerifier'):null,supportedPolicy:zkEnabled?'three-exam-subjects-100-point-scales-two-decimals-no-curriculum':null,...chain.info}));
   app.get('/v1/me/results/:id/proof', student, async (req, res) => {
     const doc = await resultForStudent(req, res);
+    const evidence=await scoring.evidence(doc);
     const [value, recordedAt] = await chain.read('resultCommitment', [doc.resultId]);
     res.json({ resultId: doc.resultId, report: doc.report, salt: doc.salt, scheme: 'fairpass-result-v1',
       verification: { resultIntegrity: recordedAt !== 0n && value === commitment(doc.report, doc.salt) ? 'verified' : 'not_verified',
-        scoreAuthenticity: 'not_verified', allocationCorrectness: 'not_verified' },
-      scoring:await scoring.evidence(doc),
+        scoreAuthenticity: evidence.length>0&&evidence.every(e=>e.status==='verified')?'verified':'not_verified', allocationCorrectness: 'not_verified' },
+      scoring:evidence,
       onchainCommitment: value, recordedAt: String(recordedAt), publication: doc.publication ?? null, ...chain.info });
   });
   app.post('/v1/me/results/:id/confirm', student, async (req, res) => {

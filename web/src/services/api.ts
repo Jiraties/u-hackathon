@@ -100,7 +100,7 @@ export interface Proof extends ChainInfo {
   scoring?: ScoringEvidence[];
   resultId: string;
   report: WalletRecord["report"];
-  salt: string;
+  salt?: string;
   scheme: string;
   verification: {
     resultIntegrity: string;

@@ -14,7 +14,10 @@ if (process.env.FAIRPASS_LOCAL === 'true') {
     process.env[name] = toHex(mnemonicToAccount(mnemonic, { addressIndex }).getHdKey().privateKey);
   }
   process.env.ADMIN_ADDRESS = '';
-  if (process.env.FAIRPASS_LOAD_DEPLOYMENT === 'true') {
+
+}
+
+if (process.env.FAIRPASS_LOAD_DEPLOYMENT === 'true') {
     const manifest = JSON.parse(fs.readFileSync('/app/deployments/local.json', 'utf8'));
     if (manifest.chainId !== 31337) throw new Error('Invalid local deployment manifest');
     process.env.CONTRACT_ADDRESS = manifest.contractAddress;
@@ -22,4 +25,3 @@ if (process.env.FAIRPASS_LOCAL === 'true') {
     // New local EVM instance gets its own private dataset.
     process.env.MONGODB_DATABASE = manifest.database;
   }
-}

@@ -40,9 +40,10 @@ import {
   type AdmissionRulebook,
 } from "./domain/rulebooks";
 
-function useSession(role: "student" | "institution") {
+function useSession(role: "student" | "institution", enabled = true) {
   const key = `fairpass-session-${role}`;
   const [session, setSession] = useState<Session | null>(() => {
+    if (!enabled) return null;
     try {
       const saved = JSON.parse(
         localStorage.getItem(key) ?? sessionStorage.getItem(key) ?? "null",
@@ -56,6 +57,7 @@ function useSession(role: "student" | "institution") {
     }
   });
   const save = (value: Session | null) => {
+    if (!enabled) return;
     setSession(value);
     try {
       if (value) localStorage.setItem(key, JSON.stringify(value));
@@ -66,6 +68,7 @@ function useSession(role: "student" | "institution") {
     }
   };
   useEffect(() => {
+    if (!enabled) return;
     const sync = () => {
       try {
         const saved = JSON.parse(localStorage.getItem(key) ?? "null") as Session | null;
@@ -77,7 +80,7 @@ function useSession(role: "student" | "institution") {
     window.addEventListener("storage", storage);
     window.addEventListener("focus", wake);
     return () => { window.removeEventListener("storage", storage); window.removeEventListener("focus", wake); };
-  }, [key, session]);
+  }, [key, session, enabled]);
   useEffect(() => {
     if (!session) return;
     let timer: ReturnType<typeof setTimeout>;
@@ -148,7 +151,7 @@ const Json = ({
     <pre className="live-json">{JSON.stringify(value, null, 2)}</pre>
   </details>
 );
-function ReceiptView({ value }: { value: Receipt | null | undefined }) {
+export function ReceiptView({ value }: { value: Receipt | null | undefined }) {
   if (!value)
     return (
       <p>No transaction receipt is saved. Check the chain before retrying.</p>
@@ -270,16 +273,18 @@ function SignIn({
     </section>
   );
 }
-function StudentWallet() {
-  const { session, save } = useSession("student");
-  const [wallet, setWallet] = useState<Wallet | null>(null),
+export type ReplayWallet = { wallet: Wallet; proof: Proof; loadProof: () => Promise<Proof> };
+export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
+  const { session, save } = useSession("student", !replay);
+  const [wallet, setWallet] = useState<Wallet | null>(replay?.wallet ?? null),
     [selected, setSelected] = useState(""),
     [selectedRule, setSelectedRule] = useState(""),
-    [proof, setProof] = useState<Proof | null>(null);
+    [proof, setProof] = useState<Proof | null>(replay?.proof ?? null);
   const tokenDialog = useRef<HTMLDialogElement>(null),
     proofDialog = useRef<HTMLDialogElement>(null);
   const { busy, error, run } = useRequest();
   const refresh = async () => {
+    if (replay) return;
     try {
       setWallet(await api<Wallet>("/me/wallet", { token: session!.token }));
     } catch (e) {
@@ -289,8 +294,9 @@ function StudentWallet() {
   };
   useEffect(() => {
     let active = true;
+    if (replay) {setWallet(replay.wallet);setProof(replay.proof);return;}
     if (session)
-      void api<Wallet>("/me/wallet", { token: session.token })
+      void api<Wallet>("/me/wallet", { token: session?.token })
         .then((w) => {
           if (active) setWallet(w);
         })
@@ -309,22 +315,23 @@ function StudentWallet() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [session, replay]);
   const record =
     wallet?.records.find((r) => r.resultId === selected) ??
     wallet?.records[wallet.records.length - 1];
   const resultId = record?.resultId;
   useEffect(() => {
     let active = true;
+    if (replay) {setProof(replay.proof);return;}
     setProof(null);
     if (session && resultId) {
-      void api<Proof>(`/me/results/${resultId}/proof`, { token: session.token })
+      void api<Proof>(`/me/results/${resultId}/proof`, { token: session?.token })
         .then((evidence) => { if (active) setProof(evidence); })
         .catch(() => { if (active) setProof(null); });
     }
     return () => { active = false; };
-  }, [session?.token, resultId, record?.commitment]);
-  if (!session) return <SignIn role="student" onLogin={save} />;
+  }, [session?.token, resultId, record?.commitment, replay]);
+  if (!session && !replay) return <SignIn role="student" onLogin={save} />;
   const resultVerified = proof?.resultId === resultId && proof?.verification.resultIntegrity === "verified";
   const credential =
     record?.report.outcome === "admitted" ? record.credential : null;
@@ -332,7 +339,8 @@ function StudentWallet() {
   const program =
     rules.find((r) => r.id === record?.program?.rulebookId) ??
     (rules.length === 1 ? rules[0] : undefined);
-  const name = wallet?.student.name ?? session.name ?? "";
+  const displayName = (name: string) => replay ? name.replace(/ · Fictional program$/, "") : name;
+  const name = wallet?.student.name ?? session?.name ?? "";
   const rankedRules =
     record?.report.trace
       ?.map((t) => rules.find((r) => r.programId === t.programId))
@@ -343,8 +351,8 @@ function StudentWallet() {
   const check = () =>
     void run(async () => {
       setProof(
-        await api<Proof>(`/me/results/${record!.resultId}/proof`, {
-          token: session.token,
+        replay ? await replay.loadProof() : await api<Proof>(`/me/results/${record!.resultId}/proof`, {
+          token: session?.token,
         }),
       );
       proofDialog.current?.showModal();
@@ -366,7 +374,7 @@ function StudentWallet() {
         </div>
         <div className="token-main">
           <span className="token-type">Admission token</span>
-          <h2>{program?.programName ?? "Confirmed admission"}</h2>
+          <h2>{displayName(program?.programName ?? "Confirmed admission")}</h2>
           <p>
             {program?.degree ??
               program?.faculty ??
@@ -428,7 +436,7 @@ function StudentWallet() {
                 aria-haspopup="dialog"
               >
                 <span className="evidence-badge-symbol"><Icon name={resultVerified ? "check" : "file"} size={12} /></span>
-                {resultVerified ? "Verified" : "View proof"}
+                {resultVerified ? (replay ? "Record matched" : "Verified") : "View proof"}
                 <Icon name="chevron" size={12} />
               </button>
           </div>
@@ -465,7 +473,7 @@ function StudentWallet() {
                   <span>{wallet?.institutionName ?? rule.institutionId}</span>
                   <Icon name="chevron" size={17} />
                 </span>
-                <strong>{rule.programName}</strong>
+                <strong>{displayName(rule.programName)}</strong>
                 <span className="choice-score">
                   {calc?.status === "calculated" ? calc.total.toFixed(2) : "—"}
                   <small> / 100</small>
@@ -486,6 +494,8 @@ function StudentWallet() {
           {orderedRules
             .filter((r) => r.id === chosenRule?.id)
             .map((rule) => {
+              const preferenceIndex = record.report.trace?.findIndex(t => t.programId === rule.programId) ?? -1;
+              const authenticatedScore = record.scoring?.find(e => e.programId === record.report.preferences?.[preferenceIndex])?.status === "verified";
               const scores = record.report.scoreRecords;
               const calculation = scores
                 ? evaluateRulebook(
@@ -497,7 +507,7 @@ function StudentWallet() {
               return (
                 <div key={rule.id}>
                   <div className="trace-heading">
-                    <h3>{rule.programName}</h3>
+                    <h3>{displayName(rule.programName)}</h3>
                     <span>Rulebook v{rule.version}</span>
                   </div>
                   <div className="calculation-trace">
@@ -527,7 +537,7 @@ function StudentWallet() {
                           ))}
                         </div>
                         <p className="fine-print">
-                          Fictional inputs · Score authenticity not verified
+                          {authenticatedScore ? "Authenticated by examination authority" : "Score authenticity not verified"}
                         </p>
                       </div>
                     </div>
@@ -635,8 +645,8 @@ function StudentWallet() {
       >
         Check result integrity
       </button>
-      {record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={() => void run(async () => {
-        await api(`/me/results/${record.resultId}/scoring`, {method:"POST",token:session.token,body:{programId:evidence.programId}});
+      {replay ? <details className="demo-scoring-details"><summary>View program scoring proofs</summary>{record.scoring?.map(evidence=><ScoringEvidenceCard key={evidence.programId} evidence={evidence}/>)}</details> : record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={replay ? undefined : () => void run(async () => {
+        await api(`/me/results/${record.resultId}/scoring`, {method:"POST",token:session?.token,body:{programId:evidence.programId}});
         await refresh();
       }, {loading:"Generating a private proof and waiting for blockchain verification…",success:"Private scoring proof verified by the smart contract."})}/>)}
       <Json value={record.report} label="Private report details" />
@@ -649,7 +659,7 @@ function StudentWallet() {
           Hi, {name}
           <span className="welcome-dot">.</span>
         </span>
-        <button
+        {!replay ? <button
           className="text-button"
           disabled={busy}
           onClick={() =>
@@ -657,7 +667,7 @@ function StudentWallet() {
               try {
                 await api("/auth/logout", {
                   method: "POST",
-                  token: session.token,
+                  token: session?.token,
                 });
               } finally {
                 save(null);
@@ -666,7 +676,7 @@ function StudentWallet() {
           }
         >
           Sign out
-        </button>
+        </button> : null}
       </div>
       <div className="wallet-heading">
         <h1>
@@ -735,7 +745,7 @@ function StudentWallet() {
               <br />A record you can share.
             </h2>
             <p>Your program and current status in one checkable record.</p>
-            <ConnectedGuide />
+            {!replay ? <ConnectedGuide /> : null}
             <div className="quiet-privacy">
               <Icon name="lock" size={20} />
               <p>Your name and scores stay in your private account.</p>
@@ -748,7 +758,7 @@ function StudentWallet() {
             <div className="result-card-heading">
               <Icon name="file" size={23} />
               <span>Admission Result</span>
-              <Badge tone="blue">Fictional report</Badge>
+              {!replay ? <Badge tone="blue">Fictional report</Badge> : null}
             </div>
             <p className="result-card-year">
               Academic year {record.report.academicYear}
@@ -759,7 +769,7 @@ function StudentWallet() {
                 : "Not admitted"}
             </h2>
             <p className="result-card-round">{record.report.round}</p>
-            {record.report.outcome === "admitted" ? (
+            {record.report.outcome === "admitted" && !replay ? (
               record.confirmationRequestedAt ? (
                 <p role="status">
                   Confirmation requested. Waiting for institution issuance.
@@ -777,7 +787,7 @@ function StudentWallet() {
                       void run(async () => {
                         await api(`/me/results/${record.resultId}/confirm`, {
                           method: "POST",
-                          token: session.token,
+                          token: session?.token,
                         });
                         await refresh();
                       }, { loading: "Submitting your confirmation…", success: "Confirmation submitted. Your university can now issue your admission token." });
@@ -807,7 +817,7 @@ function StudentWallet() {
               resultVerified={resultVerified}
               busy={busy}
               onCheckIntegrity={check}
-              loadEvidence={() => api<Proof>(`/me/results/${record.resultId}/proof`, { token: session.token })}
+              loadEvidence={() => replay ? replay.loadProof() : api<Proof>(`/me/results/${record.resultId}/proof`, { token: session?.token })}
             />
           ) : <aside className="wallet-story">
             <h2>Your result record</h2>
@@ -819,7 +829,7 @@ function StudentWallet() {
             >
               Check result integrity
             </button>
-            <ConnectedGuide />
+            {!replay ? <ConnectedGuide /> : null}
           </aside>}
         </div>
       ) : wallet ? (
@@ -905,7 +915,7 @@ function StudentWallet() {
         <dl className="detail-list">
           <div>
             <dt>Score authenticity</dt>
-            <dd>Not verified</dd>
+            <dd>{proof?.verification.scoreAuthenticity === "verified" ? "Verified against authorized dataset" : "Not verified"}</dd>
           </div>
           <div>
             <dt>Allocation correctness</dt>

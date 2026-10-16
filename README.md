@@ -524,3 +524,7 @@ http://localhost:8081 using `compose.zk.yaml`; it preserves the original demo on
 actual local gas measurements and the separate Fuji deployment plan. The old
 Fuji registry remains v1; no ZK feature is claimed for it. No external v2 deployment
 or transaction has been performed.
+
+## Demo World
+
+The guided, keyless local replay is available at `http://localhost:8082/demo`. See [run instructions, verification boundaries and judging script](docs/demo-world/EXPERIENCE.md). Fuji V2 replay remains pending approved deployment; predicted addresses are not presented as deployed contracts.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const routePattern = /^\/(?:student\/wallet|university|transparency|verify(?:\/[^/]*)?)?\/?$/;
+const routePattern = /^\/(?:demo(?:\/(?:rules|proof|allocation|students|verify))?|student\/wallet|university|transparency|verify(?:\/[^/]*)?)?\/?$/;
 
 export const resolveAppUrl = (href: string, current: string): URL => {
   const base = new URL(current);

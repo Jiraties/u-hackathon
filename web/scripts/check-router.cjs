@@ -19,5 +19,6 @@ assert.equal(shouldHandleLink(event, anchor('/transparency?program=thai')), true
 for (const modifier of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey', 'defaultPrevented']) assert.equal(shouldHandleLink({ ...event, [modifier]: true }, anchor('/university')), false);
 assert.equal(shouldHandleLink({ ...event, button: 1 }, anchor('/university')), false);
 for (const link of [anchor('/verify', '_blank'), anchor('/verify', '', true), anchor('https://www.mytcas.com/'), anchor('#result-trace'), anchor('/api/health')]) assert.equal(shouldHandleLink(event, link), false);
+for (const route of ["/demo", "/demo/rules", "/demo/proof", "/demo/allocation", "/demo/students", "/demo/verify"]) assert.equal(shouldHandleLink(event, anchor(route)), true);
 if (oldWindow === undefined) delete global.window; else global.window = oldWindow;
 console.log('Router checks passed: internal navigation, preview URLs, URL replacement, native anchors and browser modifiers.');
