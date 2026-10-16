@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {gunzipSync} from 'node:zlib';
 import { mnemonicToAccount } from 'viem/accounts';
 import { toHex } from 'viem';
 
@@ -25,3 +26,14 @@ if (process.env.FAIRPASS_LOAD_DEPLOYMENT === 'true') {
     // New local EVM instance gets its own private dataset.
     process.env.MONGODB_DATABASE = manifest.database;
   }
+
+// Only the public receipt manifest travels through this variable. Private records stay in MongoDB.
+if (process.env.FAIRPASS_REPLAY_MANIFEST_GZIP_BASE64) {
+  const contents = gunzipSync(Buffer.from(process.env.FAIRPASS_REPLAY_MANIFEST_GZIP_BASE64, 'base64'), {maxOutputLength: 2 * 1024 * 1024}).toString('utf8');
+  JSON.parse(contents); // Full strict schema and chain reconciliation run in the API.
+  const file = '/app/deployments/demo-world-fuji.json';
+  fs.mkdirSync('/app/deployments', {recursive:true});
+  if (fs.existsSync(file) && fs.readFileSync(file,'utf8') !== contents) throw new Error('Preserve the existing replay manifest; use a fresh deployment');
+  if (!fs.existsSync(file)) fs.writeFileSync(file, contents, {flag:'wx'});
+  process.env.DEMO_REPLAY_MANIFEST = file;
+}

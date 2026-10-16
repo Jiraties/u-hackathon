@@ -24,6 +24,7 @@ export function createChain(config: Config): ChainGateway {
   } : null;
   // One signer queue per process. Run a single write replica per signing wallet.
   let tail: Promise<unknown> = Promise.resolve();
+  const nextNonces = new Map<string, number>();
   return {
     info: { chainId: chain.id, contractAddress: address, deploymentBlock: String(config.DEPLOYMENT_BLOCK), protocolVersion: config.REGISTRY_VERSION ?? 1 }, issuer: issuer?.address ?? config.ISSUER_ADDRESS as Address,
     async ready() {
@@ -46,10 +47,14 @@ export function createChain(config: Config): ChainGateway {
       if(!wallets)return Promise.reject(new Error('read_only_replay'));
       const run = tail.then(async () => {
         const wallet = wallets[role];
-        const { request } = await publicClient.simulateContract({ address, abi: artifact.abi, functionName, args, account: wallet.account });
+        if(config.MAX_FEE_PER_GAS_WEI && await publicClient.getGasPrice()>config.MAX_FEE_PER_GAS_WEI)throw new Error('configured_fee_cap_exceeded');
+        const fees=config.MAX_FEE_PER_GAS_WEI?{maxFeePerGas:config.MAX_FEE_PER_GAS_WEI,maxPriorityFeePerGas:160n}:{};
+        const nonce = Math.max(await publicClient.getTransactionCount({address:wallet.account.address,blockTag:'pending'}), nextNonces.get(wallet.account.address) ?? 0);
+        const { request } = await publicClient.simulateContract({ address, abi: artifact.abi, functionName, args, account: wallet.account, nonce, ...fees });
         const transactionHash = await wallet.writeContract(request);
         const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash, confirmations: 1, timeout: 120000 });
         if (receipt.status !== 'success') throw new Error('Transaction reverted');
+        nextNonces.set(wallet.account.address, nonce + 1);
         return { chainId: chain.id, contractAddress: address, transactionHash, blockNumber: String(receipt.blockNumber) };
       });
       tail = run.catch(() => undefined);

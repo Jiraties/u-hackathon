@@ -109,10 +109,10 @@ export async function browserJourney({
     .waitFor();
   await student.keyboard.press("Escape");
   await student
-    .getByRole("button", { name: "Request confirmation", exact: true })
+    .getByRole("button", { name: "Accept offer in FairPass", exact: true })
     .click();
   await student
-    .getByText("Confirmation requested. Waiting for institution issuance.", {
+    .getByText("Offer accepted in FairPass. Your university will complete the next steps.", {
       exact: true,
     })
     .waitFor();
@@ -121,21 +121,20 @@ export async function browserJourney({
     .click();
   await office
     .getByLabel("Issuance program")
-    .selectOption({ label: `Computer Engineering · ${round}` });
-  await office.getByRole("button", { name: "Continue", exact: true }).click();
+    .selectOption({ label: `Computer Engineering · 2027 · ${round} · v1` });
   await office
-    .getByRole("button", { name: "Refresh confirmations", exact: true })
+    .getByRole("button", { name: "Refresh results", exact: true })
     .first()
     .click();
-  await office.getByRole("checkbox", { name: studentId, exact: true }).check();
+  await office.getByRole("checkbox", { name: `Select ${studentId}`, exact: true }).check();
   await office
-    .getByRole("button", { name: "Review & issue", exact: true })
+    .getByRole("button", { name: "Review selected records", exact: true })
     .click();
   await office
-    .getByRole("button", { name: "Issue 1 tokens", exact: true })
+    .getByRole("button", { name: "Issue 1 record", exact: true })
     .click();
   await office
-    .getByText("1 admission tokens issued.", { exact: true })
+    .getByText("Batch: 1 issued", { exact: false })
     .waitFor({ timeout: 180000 });
   await student.reload();
   await student
@@ -195,7 +194,7 @@ export async function browserJourney({
     .waitFor();
   assert.equal(
     await student
-      .getByRole("button", { name: "Request confirmation", exact: true })
+      .getByRole("button", { name: "Accept offer in FairPass", exact: true })
       .count(),
     0,
   );

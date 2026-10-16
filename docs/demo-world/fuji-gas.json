@@ -1,0 +1,658 @@
+{
+  "chainId": 43113,
+  "registry": "0x7b312c07b93c420d1c371dccd88fe5a36b4c093b",
+  "recordedAt": "2026-10-16T06:51:20.755Z",
+  "scope": "Main nine-student scenario plus four deployments and issuer authorization; excludes funding and isolated guard registry.",
+  "groups": {
+    "deployment": {
+      "count": 4,
+      "gasUsed": 11089912,
+      "chargedGas": 11089912,
+      "feeWei": "1885285040"
+    },
+    "authorization": {
+      "count": 1,
+      "gasUsed": 48178,
+      "chargedGas": 48178,
+      "feeWei": "8190260"
+    },
+    "dataset": {
+      "count": 1,
+      "gasUsed": 124134,
+      "chargedGas": 124134,
+      "feeWei": "21102780"
+    },
+    "program": {
+      "count": 6,
+      "gasUsed": 984636,
+      "chargedGas": 984636,
+      "feeWei": "167388120"
+    },
+    "result": {
+      "count": 9,
+      "gasUsed": 13536814,
+      "chargedGas": 13536814,
+      "feeWei": "2301258380"
+    },
+    "scoring": {
+      "count": 27,
+      "gasUsed": 142474714,
+      "chargedGas": 142474714,
+      "feeWei": "24220701380"
+    },
+    "confirmation": {
+      "count": 6,
+      "gasUsed": 12765705,
+      "chargedGas": 12765705,
+      "feeWei": "2170169850"
+    },
+    "credential": {
+      "count": 6,
+      "gasUsed": 25958076,
+      "chargedGas": 25958076,
+      "feeWei": "4412872920"
+    }
+  },
+  "transactions": [
+    {
+      "hash": "0xd7b6cf36b611562ae38d0d280fef547e16492c47d0f8682f8540f64c50ebe55d",
+      "kind": "deployment",
+      "blockNumber": "59543203",
+      "gasUsed": "1777166",
+      "gasLimit": "1792438",
+      "chargedGas": "1777166",
+      "effectiveGasPrice": "170",
+      "feeWei": "302118220"
+    },
+    {
+      "hash": "0x001237bb7c98715f9691766375b0c249a950c3be37c6d59f0ac339e43eb20e27",
+      "kind": "deployment",
+      "blockNumber": "59543205",
+      "gasUsed": "1383456",
+      "gasLimit": "1395603",
+      "chargedGas": "1383456",
+      "effectiveGasPrice": "170",
+      "feeWei": "235187520"
+    },
+    {
+      "hash": "0x921198b87cfbb60088040142343311a94bda4aa90235cadbf233d7e90ff77d5e",
+      "kind": "deployment",
+      "blockNumber": "59543209",
+      "gasUsed": "4000862",
+      "gasLimit": "4033782",
+      "chargedGas": "4000862",
+      "effectiveGasPrice": "170",
+      "feeWei": "680146540"
+    },
+    {
+      "hash": "0x7deb96952a1c694ef7bd31e17868bb052d8fff87c5e70fcd37b7b3b449857e8e",
+      "kind": "deployment",
+      "blockNumber": "59543215",
+      "gasUsed": "3928428",
+      "gasLimit": "3960773",
+      "chargedGas": "3928428",
+      "effectiveGasPrice": "170",
+      "feeWei": "667832760"
+    },
+    {
+      "hash": "0xdd8a1ab5ad963d99a198824cb19bcacf686cd8dc4c28032d9a2201cb299a44b1",
+      "kind": "authorization",
+      "blockNumber": "59543221",
+      "gasUsed": "48178",
+      "gasLimit": "48564",
+      "chargedGas": "48178",
+      "effectiveGasPrice": "170",
+      "feeWei": "8190260"
+    },
+    {
+      "hash": "0x5c05160308b0bab4b3d813d4796894493d41a31f62adbe870e91ae6301f7a220",
+      "kind": "dataset",
+      "blockNumber": "59543300",
+      "gasUsed": "124134",
+      "gasLimit": "125209",
+      "chargedGas": "124134",
+      "effectiveGasPrice": "170",
+      "feeWei": "21102780"
+    },
+    {
+      "hash": "0xfeab37d8a361c2e8271a993c1a341b72428bb15889adc9da91c97f450f422724",
+      "kind": "program",
+      "blockNumber": "59543307",
+      "gasUsed": "273631",
+      "gasLimit": "276970",
+      "chargedGas": "273631",
+      "effectiveGasPrice": "170",
+      "feeWei": "46517270"
+    },
+    {
+      "hash": "0x7f3c92942784f896bde8c36190bbca5430e4c0be10d2ce4e6be4b933a11f6e25",
+      "kind": "program",
+      "blockNumber": "59543311",
+      "gasUsed": "54585",
+      "gasLimit": "55384",
+      "chargedGas": "54585",
+      "effectiveGasPrice": "170",
+      "feeWei": "9279450"
+    },
+    {
+      "hash": "0xc26d3f38caf39bd45e5b4ae0100272a078a9311b37d4cf9f4dbbb55079a06c11",
+      "kind": "program",
+      "blockNumber": "59543313",
+      "gasUsed": "273631",
+      "gasLimit": "276970",
+      "chargedGas": "273631",
+      "effectiveGasPrice": "170",
+      "feeWei": "46517270"
+    },
+    {
+      "hash": "0x877dd7cda5d120dd7d5b81b5c2fb4993840c2d8ac9fe04e7d6820f2835d9e879",
+      "kind": "program",
+      "blockNumber": "59543314",
+      "gasUsed": "54585",
+      "gasLimit": "55384",
+      "chargedGas": "54585",
+      "effectiveGasPrice": "170",
+      "feeWei": "9279450"
+    },
+    {
+      "hash": "0x205f3f429121229ab5aee9eaf76cf3d0f2a76fc7f18e7d29bc85ce1a56e361a4",
+      "kind": "program",
+      "blockNumber": "59543315",
+      "gasUsed": "273619",
+      "gasLimit": "276958",
+      "chargedGas": "273619",
+      "effectiveGasPrice": "170",
+      "feeWei": "46515230"
+    },
+    {
+      "hash": "0x1eb0c8743b4e446f6747a338689499e795a3720f05365a7161ccdf8bb8ce9ed5",
+      "kind": "program",
+      "blockNumber": "59543320",
+      "gasUsed": "54585",
+      "gasLimit": "55384",
+      "chargedGas": "54585",
+      "effectiveGasPrice": "170",
+      "feeWei": "9279450"
+    },
+    {
+      "hash": "0x353790453b66cae16eeaa51697dc72008c7c2187e8d56e03b4cc984c722c60b1",
+      "kind": "result",
+      "blockNumber": "59543330",
+      "gasUsed": "127250",
+      "gasLimit": "128338",
+      "chargedGas": "127250",
+      "effectiveGasPrice": "170",
+      "feeWei": "21632500"
+    },
+    {
+      "hash": "0x34b70f04bef777cfe4f0bf34b7d40b5db27ed2135d2cb2b7547337807dfeff6e",
+      "kind": "result",
+      "blockNumber": "59543335",
+      "gasUsed": "127250",
+      "gasLimit": "128338",
+      "chargedGas": "127250",
+      "effectiveGasPrice": "170",
+      "feeWei": "21632500"
+    },
+    {
+      "hash": "0xf7f11951b385475bf64c023926b986543c64368046bcb3f7d95756e3cdd94e1a",
+      "kind": "result",
+      "blockNumber": "59543341",
+      "gasUsed": "127250",
+      "gasLimit": "128338",
+      "chargedGas": "127250",
+      "effectiveGasPrice": "170",
+      "feeWei": "21632500"
+    },
+    {
+      "hash": "0x42a7dfe2134af985c874dac10ded6401c7643c0264fef593515675fc7a56ad79",
+      "kind": "result",
+      "blockNumber": "59543346",
+      "gasUsed": "127250",
+      "gasLimit": "128338",
+      "chargedGas": "127250",
+      "effectiveGasPrice": "170",
+      "feeWei": "21632500"
+    },
+    {
+      "hash": "0x2279291a61c5f4bda35e638c2785fec94fa82c2d7b186378d5f46f30cc906f98",
+      "kind": "result",
+      "blockNumber": "59543348",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x21341e25e7b38bd790da873cb0b40999142a989e8f870c54b5615b90718f952b",
+      "kind": "result",
+      "blockNumber": "59543351",
+      "gasUsed": "127250",
+      "gasLimit": "128338",
+      "chargedGas": "127250",
+      "effectiveGasPrice": "170",
+      "feeWei": "21632500"
+    },
+    {
+      "hash": "0xa0d6dbfbf20207ff1d622d2a84e54a2f0458d8648354de7df0878cc85f78abb5",
+      "kind": "result",
+      "blockNumber": "59543353",
+      "gasUsed": "100254",
+      "gasLimit": "101235",
+      "chargedGas": "100254",
+      "effectiveGasPrice": "170",
+      "feeWei": "17043180"
+    },
+    {
+      "hash": "0x55352fb2b20932af9682ccb6b5daabc7a8504f819a3dd94b581388b178478505",
+      "kind": "result",
+      "blockNumber": "59543359",
+      "gasUsed": "100266",
+      "gasLimit": "101247",
+      "chargedGas": "100266",
+      "effectiveGasPrice": "170",
+      "feeWei": "17045220"
+    },
+    {
+      "hash": "0xf05f9df16eec74d846b01ed228c3d660613aed4e2a7992569a8f30c06479ecb8",
+      "kind": "result",
+      "blockNumber": "59543360",
+      "gasUsed": "100254",
+      "gasLimit": "101235",
+      "chargedGas": "100254",
+      "effectiveGasPrice": "170",
+      "feeWei": "17043180"
+    },
+    {
+      "hash": "0x8755bbb0a6b5168f6fb23e794d596834deb6de2f4ebccc5cf7217f623579c42d",
+      "kind": "scoring",
+      "blockNumber": "59543367",
+      "gasUsed": "2713862",
+      "gasLimit": "2736568",
+      "chargedGas": "2713862",
+      "effectiveGasPrice": "170",
+      "feeWei": "461356540"
+    },
+    {
+      "hash": "0x13376b55f6db05a26bd2f074ccb1529493e3ac4c5b8742c11578984017a4760b",
+      "kind": "scoring",
+      "blockNumber": "59543374",
+      "gasUsed": "2713850",
+      "gasLimit": "2736556",
+      "chargedGas": "2713850",
+      "effectiveGasPrice": "170",
+      "feeWei": "461354500"
+    },
+    {
+      "hash": "0xc7696b1c881db04870e899a373298e361affe4bc31cb3ae6c01d3129ef6bbd39",
+      "kind": "scoring",
+      "blockNumber": "59543384",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x05d2daa67148312f512e418dab9fa197f8e560e31d41851d3abb5e2a3e379e25",
+      "kind": "confirmation",
+      "blockNumber": "59543391",
+      "gasUsed": "33183",
+      "gasLimit": "33540",
+      "chargedGas": "33183",
+      "effectiveGasPrice": "170",
+      "feeWei": "5641110"
+    },
+    {
+      "hash": "0x42b111967b447771f003474997f78b5d69f312eb432bf6220930557773886c8a",
+      "kind": "credential",
+      "blockNumber": "59543396",
+      "gasUsed": "189624",
+      "gasLimit": "192296",
+      "chargedGas": "189624",
+      "effectiveGasPrice": "170",
+      "feeWei": "32236080"
+    },
+    {
+      "hash": "0x737e19afb042a9090729c21675aa02268b4cf3946dbfe518703dbd053bac63cd",
+      "kind": "scoring",
+      "blockNumber": "59543399",
+      "gasUsed": "2713706",
+      "gasLimit": "2736411",
+      "chargedGas": "2713706",
+      "effectiveGasPrice": "170",
+      "feeWei": "461330020"
+    },
+    {
+      "hash": "0x871ddf1bc78660a46574b81ba02b58c81aba4571f82d4f713714adeb6bd6dcad",
+      "kind": "scoring",
+      "blockNumber": "59543403",
+      "gasUsed": "2713790",
+      "gasLimit": "2736495",
+      "chargedGas": "2713790",
+      "effectiveGasPrice": "170",
+      "feeWei": "461344300"
+    },
+    {
+      "hash": "0xf6fde647370a157ea0907273639e1dd4187bd3c3045fd2c61f4a9b069b02ada5",
+      "kind": "scoring",
+      "blockNumber": "59543408",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x6371129bee66f668b53c9273cee04bd3843d17e198f31cdabf9addb18b995004",
+      "kind": "confirmation",
+      "blockNumber": "59543418",
+      "gasUsed": "33183",
+      "gasLimit": "33540",
+      "chargedGas": "33183",
+      "effectiveGasPrice": "170",
+      "feeWei": "5641110"
+    },
+    {
+      "hash": "0xce8d5558490b35d740bfe6bc888ebff87e814c279f495282410ff09db6f6ae1a",
+      "kind": "credential",
+      "blockNumber": "59543424",
+      "gasUsed": "189624",
+      "gasLimit": "192296",
+      "chargedGas": "189624",
+      "effectiveGasPrice": "170",
+      "feeWei": "32236080"
+    },
+    {
+      "hash": "0x464b3f65584ef8e3f04be0e6b6c9479951dc96dea8c3da96576909c2fe1e9252",
+      "kind": "scoring",
+      "blockNumber": "59543430",
+      "gasUsed": "2713838",
+      "gasLimit": "2736544",
+      "chargedGas": "2713838",
+      "effectiveGasPrice": "170",
+      "feeWei": "461352460"
+    },
+    {
+      "hash": "0x9cb977733388c446345cae0fef44396bbeb3eadd0b45e7c9a0f02741ceeb7318",
+      "kind": "scoring",
+      "blockNumber": "59543652",
+      "gasUsed": "2713838",
+      "gasLimit": "2736544",
+      "chargedGas": "2713838",
+      "effectiveGasPrice": "170",
+      "feeWei": "461352460"
+    },
+    {
+      "hash": "0xfd9899929248e9b17a21e639773c2b2f66d83d629fea2eff5a48ffd7d05f873a",
+      "kind": "scoring",
+      "blockNumber": "59543655",
+      "gasUsed": "2713766",
+      "gasLimit": "2736471",
+      "chargedGas": "2713766",
+      "effectiveGasPrice": "170",
+      "feeWei": "461340220"
+    },
+    {
+      "hash": "0x3bc673eca8897f48db47b7b133f612b2139d7cad5db1decf3c4729f088db8739",
+      "kind": "confirmation",
+      "blockNumber": "59543662",
+      "gasUsed": "33183",
+      "gasLimit": "33540",
+      "chargedGas": "33183",
+      "effectiveGasPrice": "170",
+      "feeWei": "5641110"
+    },
+    {
+      "hash": "0x9a75eb0021bf7dc22d24c20954f6cd5ac2862340ad11422250f64c8c219f37e7",
+      "kind": "credential",
+      "blockNumber": "59543666",
+      "gasUsed": "189624",
+      "gasLimit": "192296",
+      "chargedGas": "189624",
+      "effectiveGasPrice": "170",
+      "feeWei": "32236080"
+    },
+    {
+      "hash": "0x76d1553185f7ee4d34a656c6bbba149c0392cd1ad184712cb6046287fb901dd4",
+      "kind": "scoring",
+      "blockNumber": "59543675",
+      "gasUsed": "2713718",
+      "gasLimit": "2736423",
+      "chargedGas": "2713718",
+      "effectiveGasPrice": "170",
+      "feeWei": "461332060"
+    },
+    {
+      "hash": "0xcc02430a3e382ea08e17217cd3d35882cb482020773049aef9fd953ac7ef0739",
+      "kind": "scoring",
+      "blockNumber": "59543681",
+      "gasUsed": "2713838",
+      "gasLimit": "2736544",
+      "chargedGas": "2713838",
+      "effectiveGasPrice": "170",
+      "feeWei": "461352460"
+    },
+    {
+      "hash": "0x35bf8e696164bdf5696134aae12ae672b07670215221d5707a0d9abc1b769daf",
+      "kind": "scoring",
+      "blockNumber": "59543684",
+      "gasUsed": "2713838",
+      "gasLimit": "2736544",
+      "chargedGas": "2713838",
+      "effectiveGasPrice": "170",
+      "feeWei": "461352460"
+    },
+    {
+      "hash": "0x26f19f9391f44eec284144e140068d44ec166560d35f8097cbadb38632bd930f",
+      "kind": "confirmation",
+      "blockNumber": "59543690",
+      "gasUsed": "33183",
+      "gasLimit": "33540",
+      "chargedGas": "33183",
+      "effectiveGasPrice": "170",
+      "feeWei": "5641110"
+    },
+    {
+      "hash": "0x7c72b861438214d04cd19fc4c69ace8d12ababaf031742c3e3187127600ae9dc",
+      "kind": "credential",
+      "blockNumber": "59543693",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0xa02937057c81d6dd35f7bef3040a6fa7944b7c794e481736b9f6ce502caff89b",
+      "kind": "scoring",
+      "blockNumber": "59543700",
+      "gasUsed": "2713802",
+      "gasLimit": "2736507",
+      "chargedGas": "2713802",
+      "effectiveGasPrice": "170",
+      "feeWei": "461346340"
+    },
+    {
+      "hash": "0xc87fee438f947ba93c38bfa708f7e7cc3d97c1156837844efac61edb9bbdeaa7",
+      "kind": "scoring",
+      "blockNumber": "59543707",
+      "gasUsed": "2713718",
+      "gasLimit": "2736423",
+      "chargedGas": "2713718",
+      "effectiveGasPrice": "170",
+      "feeWei": "461332060"
+    },
+    {
+      "hash": "0x39b5148dc4fa5b9402b63359ecde5432d4601d0918cb5a9859a76cd79219fedb",
+      "kind": "scoring",
+      "blockNumber": "59543715",
+      "gasUsed": "2713922",
+      "gasLimit": "2736628",
+      "chargedGas": "2713922",
+      "effectiveGasPrice": "170",
+      "feeWei": "461366740"
+    },
+    {
+      "hash": "0x73f309bd23aef1f15e90efe30b7ec569370162bdce366a9a116770dc0b9ea0b8",
+      "kind": "confirmation",
+      "blockNumber": "59543723",
+      "gasUsed": "33183",
+      "gasLimit": "33540",
+      "chargedGas": "33183",
+      "effectiveGasPrice": "170",
+      "feeWei": "5641110"
+    },
+    {
+      "hash": "0xe001d8f49071eb438e9cda0470a9bd5aef6086c85f2b0dee20e9981aefc17170",
+      "kind": "credential",
+      "blockNumber": "59543724",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x73132cd51bb84a01767dab4b281f24e703ef945816df4ffe382a42766cec4e4f",
+      "kind": "scoring",
+      "blockNumber": "59543731",
+      "gasUsed": "2713946",
+      "gasLimit": "2736653",
+      "chargedGas": "2713946",
+      "effectiveGasPrice": "170",
+      "feeWei": "461370820"
+    },
+    {
+      "hash": "0x8581f1f533ccec7de4c13bbde342da4927d4c61b583c86da84aea38bcbfe2f01",
+      "kind": "scoring",
+      "blockNumber": "59543733",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0xc188b5aba08c12c39fb3a34f9be33464714eeb9662f82b5092e40d8815f6bbfc",
+      "kind": "scoring",
+      "blockNumber": "59543735",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x7e4bed7cc151d523aff3d3e65c3634602c77ef0f894c72c22b39b0c368c8bb2b",
+      "kind": "confirmation",
+      "blockNumber": "59543741",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0xf7cfb42b080fa8623babc12b1aee85b72757de35803288016c4bf00c13b44975",
+      "kind": "credential",
+      "blockNumber": "59543747",
+      "gasUsed": "189624",
+      "gasLimit": "192296",
+      "chargedGas": "189624",
+      "effectiveGasPrice": "170",
+      "feeWei": "32236080"
+    },
+    {
+      "hash": "0x60ae0f9712ea57dc39988cf3fd82d720f93c700006385bc3b53b6a48c88f8afb",
+      "kind": "scoring",
+      "blockNumber": "59543755",
+      "gasUsed": "2713862",
+      "gasLimit": "2736568",
+      "chargedGas": "2713862",
+      "effectiveGasPrice": "170",
+      "feeWei": "461356540"
+    },
+    {
+      "hash": "0x85637a38c4906796227048667c43d591c3b3271e19f359005208cdc959d7e3ce",
+      "kind": "scoring",
+      "blockNumber": "59543759",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0xd318121e1c103a52463169c82f2862650e73833b422086f7e2cccc8d02da17bf",
+      "kind": "scoring",
+      "blockNumber": "59543764",
+      "gasUsed": "2713802",
+      "gasLimit": "2736507",
+      "chargedGas": "2713802",
+      "effectiveGasPrice": "170",
+      "feeWei": "461346340"
+    },
+    {
+      "hash": "0xa32e81d6d07f54f698c4d7964ae8630527347cb304982a0b59fb434abff689fa",
+      "kind": "scoring",
+      "blockNumber": "59543767",
+      "gasUsed": "2713715",
+      "gasLimit": "2736420",
+      "chargedGas": "2713715",
+      "effectiveGasPrice": "170",
+      "feeWei": "461331550"
+    },
+    {
+      "hash": "0x1e32f1aac8aaa21b28193364c03d26538874de9974e28fa39e245c9b1a034fbc",
+      "kind": "scoring",
+      "blockNumber": "59543771",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0xae285f72e32f02e13a0b80ff66b98c9f41cb6c0eb030889d4c131c07dad35d06",
+      "kind": "scoring",
+      "blockNumber": "59543776",
+      "gasUsed": "12599790",
+      "gasLimit": "25199580",
+      "chargedGas": "12599790",
+      "effectiveGasPrice": "170",
+      "feeWei": "2141964300"
+    },
+    {
+      "hash": "0x31936eab1f38e34c067b7aee8cb663643106ab90d961be45311c08adca4ffe3e",
+      "kind": "scoring",
+      "blockNumber": "59543785",
+      "gasUsed": "2713811",
+      "gasLimit": "2736516",
+      "chargedGas": "2713811",
+      "effectiveGasPrice": "170",
+      "feeWei": "461347870"
+    },
+    {
+      "hash": "0x6eece7dfb133bae23696ae3cfffad7e590c41ba3bc5022746d8e2445a5aef91d",
+      "kind": "scoring",
+      "blockNumber": "59543794",
+      "gasUsed": "2713811",
+      "gasLimit": "2736516",
+      "chargedGas": "2713811",
+      "effectiveGasPrice": "170",
+      "feeWei": "461347870"
+    },
+    {
+      "hash": "0x69c886f7b6ecd733ae903be9e3f3942ab0a84dd4dea0ce9fe85a93d680f441c9",
+      "kind": "scoring",
+      "blockNumber": "59543800",
+      "gasUsed": "2713751",
+      "gasLimit": "2736456",
+      "chargedGas": "2713751",
+      "effectiveGasPrice": "170",
+      "feeWei": "461337670"
+    }
+  ]
+}

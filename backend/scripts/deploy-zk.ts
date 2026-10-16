@@ -29,18 +29,21 @@ const chain=defineChain({id:chainId,name:'FairPass ZK',nativeCurrency:{name:'AVA
 const client=createPublicClient({chain,transport:http(rpc)});if(await client.getChainId()!==chainId)throw Error('RPC chain mismatch');
 if(chainId!==31337 && await client.getTransactionCount({address:admin.address,blockTag:'pending'})!==0)throw Error('Admin nonce changed: review predicted addresses before deployment');
 const wallet=createWalletClient({account:admin,chain,transport:http(rpc)});
+const feeCap=process.env.MAX_FEE_PER_GAS_WEI?BigInt(process.env.MAX_FEE_PER_GAS_WEI):undefined;
+if(feeCap && await client.getGasPrice()>feeCap)throw Error('Network fee exceeds configured deployment cap');
+const fees=feeCap?{maxFeePerGas:feeCap,maxPriorityFeePerGas:160n}:{};
 const libraries:Record<string,Address>={};const deployments=[];
 fs.mkdirSync('deployments',{recursive:true});
 for(const artifact of artifacts){
  const args=artifact.name==='FairPassRegistryV2'?[admin.address,allocation,exam,libraries.HonkVerifier]:[];
- const hash=await wallet.deployContract({abi:artifact.abi,bytecode:linkBytecode(artifact,libraries),args});
+ const hash=await wallet.deployContract({abi:artifact.abi,bytecode:linkBytecode(artifact,libraries),args,...fees});
  const receipt=await client.waitForTransactionReceipt({hash,timeout:120000});if(receipt.status!=='success'||!receipt.contractAddress)throw Error('Deployment reverted');
  libraries[artifact.name]=receipt.contractAddress;deployments.push({name:artifact.name,address:receipt.contractAddress,transactionHash:hash,block:String(receipt.blockNumber),gasUsed:String(receipt.gasUsed)});
  // Durable public-only progress. Never persist signing keys or witnesses.
  fs.writeFileSync(`deployments/zk-${chainId}-progress.json`,JSON.stringify({plan,deployments},null,2));
 }
 const registry=artifacts.find(a=>a.name==='FairPassRegistryV2')!;
-const {request}=await client.simulateContract({address:libraries.FairPassRegistryV2,abi:registry.abi,functionName:'authorizeInstitution',args:[issuer,true],account:admin});
+const {request}=await client.simulateContract({address:libraries.FairPassRegistryV2,abi:registry.abi,functionName:'authorizeInstitution',args:[issuer,true],account:admin,...fees});
 const hash=await wallet.writeContract(request);const receipt=await client.waitForTransactionReceipt({hash});if(receipt.status!=='success')throw Error('Issuer authorization reverted');
 const manifest={...plan,deployments,registry:libraries.FairPassRegistryV2,verifier:libraries.HonkVerifier,admin:admin.address,allocationAuthority:allocation,examinationAuthority:exam,issuer,authorizationTransaction:hash,deploymentBlock:deployments.find(d=>d.name==='FairPassRegistryV2')!.block};
 fs.writeFileSync(`deployments/zk-${chainId}-${manifest.registry}.json`,JSON.stringify(manifest,null,2));

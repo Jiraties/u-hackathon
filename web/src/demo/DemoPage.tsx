@@ -761,7 +761,7 @@ const VerifyChapter = ({
                 requirement was not met.
               </p>
               <span className="demo-check-kind">
-                Historical V2 contract call · no transaction sent
+                Read-only V2 contract call · no transaction sent
               </span>
             </>
           ) : (
@@ -785,7 +785,7 @@ const VerifyChapter = ({
                 eligible and confirmed. Can the issuer create a third?
               </p>
               <span className="demo-check-kind">
-                Historical V2 contract call · no transaction sent
+                Read-only V2 contract call · no transaction sent
               </span>
             </>
           )}
@@ -828,6 +828,8 @@ const VerifyChapter = ({
                 <p>
                   {result.kind === "circuit_constraint_check"
                     ? "The actual circuit was checked locally. No blockchain transaction was submitted."
+                    : result.kind === "current_contract_call"
+                    ? `${result.error} · Current contract state checked. No transaction was submitted.`
                     : `${result.error} · Contract call at block ${result.blockNumber}. No transaction was submitted.`}
                 </p>
               </div>
