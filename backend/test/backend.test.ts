@@ -352,3 +352,47 @@ test('browser: publish rules → process cohort → student confirmation → ins
   assert.deepEqual(errors,[]);
   } catch(error) { console.error(error); throw error; }
 });
+
+test('judge demo access only issues local fictional sessions and preserves normal authentication',async(t)=>{
+ const previousLocal=process.env.FAIRPASS_LOCAL;
+ t.after(()=>{if(previousLocal===undefined)delete process.env.FAIRPASS_LOCAL;else process.env.FAIRPASS_LOCAL=previousLocal;});
+ process.env.FAIRPASS_LOCAL='true';
+ const mongo=await MongoMemoryServer.create({binary:{downloadDir:path.resolve('cache/mongodb')}});
+ t.after(()=>mongo.stop());
+ const connection=await connectStore(mongo.getUri(),'judge_access');t.after(()=>connection.close());
+ const store=connection.store;
+ await store.students.insertOne({_id:'demo-pim',name:'Pim (fictional)',passwordHash:await passwordHash('password')});
+ await store.students.insertOne({_id:'private-student',name:'Private student',passwordHash:await passwordHash('private-password')});
+ await store.operators.insertOne({_id:'demo-office',name:'Demo officer',institutionId:'fairpass-demo',passwordHash:await passwordHash('password')});
+ const config={ADMIN_API_TOKEN:'a'.repeat(40),ISSUER_API_TOKEN:'i'.repeat(40),INTEGRATION_API_TOKEN:'x'.repeat(40),INSTITUTION_ID:'fairpass-demo',CORS_ORIGIN:'http://localhost:5173',CHAIN_ID:31337,DEMO_JUDGE_ACCESS:true,DEMO_READ_ONLY:false} as Config;
+ const app=createApp(config,store,chain);
+ t.after(()=>app.locals.closeScoring());
+ const available=(await request(app).get('/v1/auth/demo-access').expect(200)).body;
+ assert.equal(available.enabled,true);assert.equal(available.institution,true);
+ assert.deepEqual(available.students,[{id:'demo-pim',name:'Pim (new result)',hasResults:false}]);
+ assert.equal(JSON.stringify(available).includes('passwordHash'),false);
+ await request(app).post('/v1/auth/demo-access').send({role:'student',studentId:'private-student'}).expect(404);
+ await request(app).post('/v1/auth/demo-access').send({role:'institution',operatorId:'any-account'}).expect(400);
+ const student=(await request(app).post('/v1/auth/demo-access').send({role:'student',studentId:'demo-pim'}).expect(200)).body;
+ assert.equal(student.demo,true);assert.ok(Date.parse(student.expiresAt)-Date.now()<=60*60*1000);
+ await request(app).get('/v1/me/wallet').auth(student.token,{type:'bearer'}).expect(200);
+ await request(app).get('/v1/office/workspace').auth(student.token,{type:'bearer'}).expect(401);
+ const institution=(await request(app).post('/v1/auth/demo-access').send({role:'institution'}).expect(200)).body;
+ await request(app).get('/v1/office/workspace').auth(institution.token,{type:'bearer'}).expect(200);
+ await request(app).get('/v1/me/wallet').auth(institution.token,{type:'bearer'}).expect(401);
+ await request(app).post('/v1/auth/institution/login').send({operatorId:'demo-office',password:'wrong'}).expect(401);
+ for(const patch of [{DEMO_JUDGE_ACCESS:false},{CHAIN_ID:43113},{CHAIN_ID:43114},{DEMO_READ_ONLY:true}]){
+  const disabled=createApp({...config,...patch} as Config,store,chain);t.after(()=>disabled.locals.closeScoring());
+  assert.equal((await request(disabled).get('/v1/auth/demo-access').expect(200)).body.enabled,false);
+  await request(disabled).post('/v1/auth/demo-access').send({role:'institution'}).expect(patch.DEMO_READ_ONLY?403:404);
+  await request(disabled).get('/v1/office/workspace').auth(institution.token,{type:'bearer'}).expect(401);
+ }
+ process.env.FAIRPASS_LOCAL='false';
+ const notLocal=createApp(config,store,chain);t.after(()=>notLocal.locals.closeScoring());
+ await request(notLocal).post('/v1/auth/demo-access').send({role:'institution'}).expect(404);
+ process.env.FAIRPASS_LOCAL='true';
+ const wrongRpc=createApp(config,store,{...chain,ready:async()=>{throw Error('RPC chain mismatch');}});t.after(()=>wrongRpc.locals.closeScoring());
+ await request(wrongRpc).post('/v1/auth/demo-access').send({role:'institution'}).expect(503);
+ await request(app).post('/v1/auth/institution/logout').auth(institution.token,{type:'bearer'}).expect(204);
+ await request(app).get('/v1/office/workspace').auth(institution.token,{type:'bearer'}).expect(401);
+});

@@ -1,3 +1,4 @@
+import {localDemoAccessEnabled,registerLocalDemoAccess} from './localDemoAccess.js';
 import { DemoWorldService } from './demo/world.js';
 import { loadReplayManifest, scenarioProjection, PERSPECTIVES } from './demo/replay.js';
 import { DEFINITION_ID } from './demo/scenario.js';
@@ -43,6 +44,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   const replayManifest = loadReplayManifest(config.DEMO_REPLAY_MANIFEST);
   const zkEnabled = config.REGISTRY_VERSION === 2;
   const localDemo = process.env.FAIRPASS_LOCAL === 'true' && config.CHAIN_ID === 31337;
+  const judgeAccess=localDemoAccessEnabled(config,localDemo);
   const provisionPassword = localDemo
     ? z.union([z.string().min(12).max(128), z.literal('password')])
     : z.string().min(12).max(128);
@@ -51,6 +53,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   app.use(securityHeaders(), cors({ origin: config.CORS_ORIGIN }), express.json({ limit: '128kb' }));
   app.use(rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use((req,res,next)=>{if(config.DEMO_READ_ONLY&&!['GET','HEAD','OPTIONS'].includes(req.method)){res.status(403).json({error:'read_only_replay'});return;}next();});
+  registerLocalDemoAccess(app,config,store,chain,judgeAccess);
   app.use('/v1/me', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   const operator = (token: string) => (req: Request, _res: Response, next: NextFunction) => {
     if (!safeEqual(bearer(req), token)) return next(new HttpError(401, 'unauthorized'));
@@ -60,7 +63,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     try {
       if (!await sessionTokens.valid(bearer(req), 'student')) fail(401, 'unauthorized');
       const session = await store.sessions.findOne({ _id: tokenHash(bearer(req)), expiresAt: { $gt: new Date() } });
-      if (!session || session.role === 'institution') fail(401, 'unauthorized');
+      if (!session || (session.demo && !judgeAccess) || session.role === 'institution') fail(401, 'unauthorized');
       res.locals.studentId = session.studentId; next();
     } catch (e) { next(e); }
   };
@@ -89,7 +92,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     try {
       if (!await sessionTokens.valid(bearer(req), 'institution')) fail(401, 'institution_login_required');
       const session = await store.sessions.findOne({ _id: tokenHash(bearer(req)), role: 'institution', institutionId, expiresAt: { $gt: new Date() } });
-      if (!session) fail(401, 'institution_login_required');
+      if (!session || (session.demo && !judgeAccess)) fail(401, 'institution_login_required');
       res.locals.institutionId = session.institutionId;
       res.setHeader('Cache-Control', 'no-store'); next();
     } catch (e) { next(e); }

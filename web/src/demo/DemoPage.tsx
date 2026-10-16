@@ -1,101 +1,1286 @@
-import {useEffect,useRef,useState,useMemo} from 'react';
-import {Icon,type IconName} from '../components/Icon';
-import {RuleWeightComposition} from '../components/RuleEditors';
-import {StudentWallet,ReceiptView,type ReplayWallet} from '../LiveApp';
-import {api} from '../services/api';
-import {chapters,cleanName,loadWorld,networkLabel,progressKey,replayProof,replayWallet,type World} from './state';
-import './demo.css';
+import { useEffect, useRef, useState, useMemo } from "react";
+import { Icon, type IconName } from "../components/Icon";
+import { RuleWeightComposition } from "../components/RuleEditors";
+import { StudentWallet, ReceiptView, type ReplayWallet } from "../LiveApp";
+import { api } from "../services/api";
+import {
+  chapters,
+  cleanName,
+  loadWorld,
+  networkLabel,
+  progressKey,
+  replayProof,
+  replayWallet,
+  type World,
+} from "./state";
+import { ChapterEvidence } from "./ChainEvidence";
+import "./demo.css";
 
-type ExperimentResult={kind:string;outcome:string;message:string;submittedTransaction:boolean;error?:string;contractAddress?:string;blockNumber?:string};
-const chapterCopy=[
- {heading:'The rules come first.',text:'Before a single application is evaluated, the university sets the same rules for everyone.'},
- {heading:'Private scores.\nVerifiable math.',text:'A calculation can be checked without publishing the examination scores behind it.'},
- {heading:'Nine students.\nSix places.',text:'Scores matter. So do minimum requirements, preferences and the number of available places.'},
- {heading:'Every result deserves\nan explanation.',text:'An offer or a rejection: every student should be able to follow the evidence.'},
- {heading:'Don’t just trust it.\nCheck the proof.',text:'Change a score. Break a requirement. Try one more seat. See which checks stop the operation.'},
+type ExperimentResult = {
+  kind: string;
+  outcome: string;
+  message: string;
+  submittedTransaction: boolean;
+  error?: string;
+  contractAddress?: string;
+  blockNumber?: string;
+};
+const chapterCopy = [
+  {
+    heading: "Rules locked on-chain.",
+    text: "Why lock the rules first? It makes them tamper-evident. Students can check that the rules used for their result match the version published before evaluation.",
+  },
+  {
+    heading: "Private scores.\nVerifiable math.",
+    text: "A Noir zero-knowledge proof lets a Solidity verifier check the calculation without revealing the examination scores.",
+  },
+  {
+    heading: "Nine students.\nSix places.",
+    text: "Scores matter. So do minimum requirements, preferences and the number of available places.",
+  },
+  {
+    heading: "Every result deserves\nan explanation.",
+    text: "An offer or a rejection: every student should be able to follow the evidence.",
+  },
+  {
+    heading: "Don’t just trust it.\nCheck the proof.",
+    text: "Change a score. Break a requirement. Try one more seat. See which checks stop the operation.",
+  },
 ];
-const Avatar=({name,small=false}:{name:string;small?:boolean})=><span className={`demo-avatar${small?' small':''}`} aria-hidden="true">{name.slice(0,1)}</span>;
-const Status=({world}:{world:World})=><span className={`demo-network ${world.state}`}><span/>{world.state==='verified'?networkLabel(world):world.state==='stale'?'Historical evidence · no longer current':world.state==='unavailable'?'Verification unavailable':'Fuji deployment pending'}</span>;
-const Evidence=({world,kind,onClose}:{world:World;kind:string;onClose:()=>void})=>{
- const ref=useRef<HTMLDialogElement>(null);
- useEffect(()=>{ref.current?.showModal();const close=()=>onClose();ref.current?.addEventListener('close',close);return()=>ref.current?.removeEventListener('close',close);},[onClose]);
- const evidence=world.manifest?.evidence.filter(e=>kind==='all'||(kind==='proof'?e.kind==='scoring'||e.kind==='dataset':kind==='rules'?e.kind==='program':kind==='students'?e.kind==='result'||e.kind==='credential':true))??[];
- return <dialog ref={ref} className="demo-evidence-dialog" aria-labelledby="demo-evidence-title" onClick={e=>{if(e.target===e.currentTarget)ref.current?.close();}}>
-  <form method="dialog" className="dialog-close"><button className="close-button" aria-label="Close blockchain evidence">×</button></form>
-  <h2 id="demo-evidence-title">The evidence behind the story.</h2><Status world={world}/>
-  {!world.manifest?<p>{world.reason} No confirmed evidence is being claimed.</p>:<><p>Read from {networkLabel(world)}. Observed {new Date(world.observedAt).toLocaleTimeString()}.</p><dl><div><dt>Registry</dt><dd><code>{world.manifest.registry}</code></dd></div><div><dt>Scoring verifier</dt><dd><code>{world.manifest.verifier}</code></dd></div></dl>
-   <details><summary>Code & verification-key fingerprints</summary><p>Verification key <code>{world.manifest.verificationKeySha256}</code></p>{world.manifest.deployments?.map(d=><p key={d.name}>{d.name}<code>{d.runtimeCodeHash}</code></p>)}</details>
-   <div className="demo-receipts">{evidence.map(e=><article key={`${e.receipt.transactionHash}-${e.logIndex}`}><strong>{e.eventName}</strong><span>Event {e.logIndex} · {e.kind}</span><ReceiptView value={e.receipt}/></article>)}</div></>}
- </dialog>;
+const Avatar = ({ name, small = false }: { name: string; small?: boolean }) => (
+  <span className={`demo-avatar${small ? " small" : ""}`} aria-hidden="true">
+    {name.slice(0, 1)}
+  </span>
+);
+const Status = ({ world }: { world: World }) => (
+  <span className={`demo-network ${world.state}`}>
+    <span />
+    {world.state === "verified"
+      ? networkLabel(world)
+      : world.state === "stale"
+        ? "Historical evidence · no longer current"
+        : world.state === "unavailable"
+          ? "Verification unavailable"
+          : "Fuji deployment pending"}
+  </span>
+);
+const Evidence = ({
+  world,
+  kind,
+  onClose,
+}: {
+  world: World;
+  kind: string;
+  onClose: () => void;
+}) => {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+    const close = () => onClose();
+    ref.current?.addEventListener("close", close);
+    return () => ref.current?.removeEventListener("close", close);
+  }, [onClose]);
+  const evidence =
+    world.manifest?.evidence.filter(
+      (e) =>
+        kind === "all" ||
+        (kind === "proof"
+          ? e.kind === "scoring" || e.kind === "dataset"
+          : kind === "rules"
+            ? e.kind === "program"
+            : kind === "students"
+              ? e.kind === "result" || e.kind === "credential"
+              : true),
+    ) ?? [];
+  return (
+    <dialog
+      ref={ref}
+      className="demo-evidence-dialog"
+      aria-labelledby="demo-evidence-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) ref.current?.close();
+      }}
+    >
+      <form method="dialog" className="dialog-close">
+        <button className="close-button" aria-label="Close blockchain evidence">
+          ×
+        </button>
+      </form>
+      <h2 id="demo-evidence-title">Contracts, proofs & receipts.</h2>
+      <Status world={world} />
+      {!world.manifest ? (
+        <p>{world.reason} No confirmed evidence is being claimed.</p>
+      ) : (
+        <>
+          <p>
+            Read from {networkLabel(world)}. Observed{" "}
+            {new Date(world.observedAt).toLocaleTimeString()}.
+          </p>
+          <dl>
+            <div>
+              <dt>Registry</dt>
+              <dd>
+                <code>{world.manifest.registry}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>Scoring verifier</dt>
+              <dd>
+                <code>{world.manifest.verifier}</code>
+              </dd>
+            </div>
+          </dl>
+          <details>
+            <summary>Code & verification-key fingerprints</summary>
+            <p>
+              Verification key{" "}
+              <code>{world.manifest.verificationKeySha256}</code>
+            </p>
+            {world.manifest.deployments?.map((d) => (
+              <p key={d.name}>
+                {d.name}
+                <code>{d.runtimeCodeHash}</code>
+              </p>
+            ))}
+          </details>
+          <div className="demo-receipts">
+            {evidence.map((e) => (
+              <article key={`${e.receipt.transactionHash}-${e.logIndex}`}>
+                <strong>{e.eventName}</strong>
+                <span>
+                  Event {e.logIndex} · {e.kind}
+                </span>
+                <ReceiptView value={e.receipt} />
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+    </dialog>
+  );
 };
 
-const RulesChapter=({world,inspect}:{world:World;inspect:()=>void})=>{
- const [index,setIndex]=useState(0);const program=world.programs[index];const rule=program?.rulebook??world.scenario.rulebooks[index];const confirmed=!!program&&world.state!=='unavailable';
- return <div className="demo-chapter-layout"><div className="demo-story"><p className="demo-participant"><Icon name="university"/>Kasetsart University</p><h1>{chapterCopy[0].heading}</h1><p>{chapterCopy[0].text}</p><div className="demo-takeaway"><Icon name="lock"/><p>{confirmed?'These rules were committed before students were evaluated.':'These are the prepared rules. Publication evidence is not available yet.'}</p></div><button className="button button-primary" onClick={inspect}>Inspect the rulebook<Icon name="arrow"/></button></div>
- <section className="demo-stage" aria-label="University rulebook" data-ui><div className="demo-program-picker" role="group" aria-label="Choose a program">{world.scenario.rulebooks.map((r,i)=><button key={r.id} aria-pressed={index===i} onClick={()=>setIndex(i)}>{cleanName(r.programName)}</button>)}</div>
- <div className="demo-rulebook"><span className="demo-stage-caption">Faculty of {rule.faculty.replace('Faculty of ','')}</span><h2>{cleanName(rule.programName)}</h2><p>Academic year {rule.academicYear} · {rule.capacity} places · Version {rule.version}</p><RuleWeightComposition rule={rule}/><div className="demo-minimums"><h3>A minimum in every subject.</h3>{rule.components.map(c=><div key={c.scoreId}><span>{c.label}</span><strong>{c.minimumPercent} / 100</strong></div>)}</div>
- <div className="demo-rule-path"><span>Draft</span><Icon name="chevron" size={15}/><span>{confirmed?'Published':'Publication pending'}</span><Icon name="chevron" size={15}/><strong><Icon name={confirmed?'lock':'clock'} size={15}/>{confirmed?(world.mode==='fuji'?'Locked on Avalanche':'Locked on local chain'):'Not yet locked'}</strong></div></div></section></div>;
+const RulesChapter = ({
+  world,
+  inspect,
+}: {
+  world: World;
+  inspect: () => void;
+}) => {
+  const [index, setIndex] = useState(0);
+  const program = world.programs[index];
+  const rule = program?.rulebook ?? world.scenario.rulebooks[index];
+  const confirmed = !!program?.lock && world.state === "verified";
+  return (
+    <div className="demo-chapter-layout">
+      <div className="demo-story">
+        <p className="demo-participant">
+          <Icon name="university" />
+          Kasetsart University
+        </p>
+        <h1>{chapterCopy[0].heading}</h1>
+        <p>{chapterCopy[0].text}</p>
+        <div className="demo-takeaway">
+          <Icon name="lock" />
+          <p>
+            {confirmed
+              ? "A later change won’t match the locked version. The university cannot quietly rewrite the rules behind a result."
+              : "These are the prepared rules. Publication evidence is not available yet."}
+          </p>
+        </div>
+        <button className="button button-primary" onClick={inspect}>
+          Inspect the contract rules
+          <Icon name="arrow" />
+        </button>
+      </div>
+      <section className="demo-stage" aria-label="University rulebook" data-ui>
+        <div
+          className="demo-program-picker"
+          role="group"
+          aria-label="Choose a program"
+        >
+          {world.scenario.rulebooks.map((r, i) => (
+            <button
+              key={r.id}
+              aria-pressed={index === i}
+              onClick={() => setIndex(i)}
+            >
+              {cleanName(r.programName)}
+            </button>
+          ))}
+        </div>
+        <div className="demo-rulebook">
+          <span className="demo-stage-caption">
+            Faculty of {rule.faculty.replace("Faculty of ", "")}
+          </span>
+          <h2>{cleanName(rule.programName)}</h2>
+          <p>
+            Academic year {rule.academicYear} · {rule.capacity} places · Version{" "}
+            {rule.version}
+          </p>
+          <RuleWeightComposition rule={rule} />
+          <div className="demo-minimums">
+            <h3>A minimum in every subject.</h3>
+            {rule.components.map((c) => (
+              <div key={c.scoreId}>
+                <span>{c.label}</span>
+                <strong>{c.minimumPercent} / 100</strong>
+              </div>
+            ))}
+          </div>
+          <div className="demo-rule-path">
+            <span>Draft</span>
+            <Icon name="chevron" size={15} />
+            <span>{confirmed ? "Published" : "Publication pending"}</span>
+            <Icon name="chevron" size={15} />
+            <strong>
+              <Icon name={confirmed ? "lock" : "clock"} size={15} />
+              {confirmed
+                ? world.mode === "fuji"
+                  ? "Locked on Avalanche"
+                  : "Locked on local chain"
+                : "Not yet locked"}
+            </strong>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 };
-const ProofChapter=({world,inspect}:{world:World;inspect:()=>void})=>{
- const [publicView,setPublicView]=useState(false);const expected=world.scenario.expected.find(s=>s.name==='Pim')!;const student=world.students.find(s=>s.name==='Pim');const applicant=world.scenario.applicants.find(a=>a.id===expected.studentId)!;const evidence=student?.proof.scoring[0];const verified=world.state==='verified'&&evidence?.status==='verified';
- const steps:{icon:IconName;label:string}[]=[{icon:'lock',label:'Private record'},{icon:'file',label:'Authorized dataset'},{icon:'shield',label:'Mathematical proof'},{icon:'globe',label:world.mode==='fuji'?'Avalanche':'Local chain'}];
- return <div className="demo-chapter-layout"><div className="demo-story"><p className="demo-participant"><Icon name="file"/>Examination authority</p><h1>Private scores.<br/>Verifiable math.</h1><p>{chapterCopy[1].text}</p><div className="demo-takeaway"><Icon name="lock"/><p>The authority authenticates the records. The proof checks the calculation.</p></div><button className="button button-primary" onClick={()=>setPublicView(v=>!v)}>{publicView?'Look inside Pim’s record':'Reveal the public proof'}<Icon name={publicView?'lock':'arrow'}/></button><button className="demo-text-action" onClick={inspect}>Inspect proof<Icon name="external" size={15}/></button></div>
- <section className={`demo-stage demo-proof-stage${publicView?' public-view':''}`} aria-label="Private scoring demonstration" data-ui><div className="demo-person"><Avatar name="Pim"/><div><h2>Pim’s calculation</h2><p>{cleanName(world.scenario.rulebooks[0].programName)}</p></div></div>
- <div className="demo-score-window">{!publicView?<><p className="demo-stage-caption">Inside this student’s private record</p><div className="demo-private-scores">{applicant.scores.map(s=><div key={s.id}><span>{world.scenario.rulebooks[0].components.find(c=>c.scoreId===s.id)!.label}</span><strong>{s.score.toFixed(2)}</strong></div>)}</div></>:<><p className="demo-stage-caption">What a public observer can inspect</p><div className="demo-public-proof"><Icon name="shield" size={44}/><strong>{verified?(world.mode==='fuji'?'Calculation verified on Avalanche.':'Verified on local test chain.'):'Verification unavailable.'}</strong><span>Raw scores hidden · Blinded total recorded</span>{evidence&&'totalCommitment' in evidence?<code>{evidence.totalCommitment?.slice(0,22)}…</code>:null}</div></>}</div>
- <div className="demo-proof-flow">{steps.map(step=><div key={step.label}><span><Icon name={step.icon} size={23}/></span><strong>{step.label}</strong></div>)}</div><p className="demo-footnote">Program associations and eligibility can remain public. Full admissions allocation is not proven by this circuit.</p></section></div>;
+const ProofChapter = ({
+  world,
+  inspect,
+}: {
+  world: World;
+  inspect: () => void;
+}) => {
+  const [publicView, setPublicView] = useState(false);
+  const expected = world.scenario.expected.find((s) => s.name === "Pim")!;
+  const student = world.students.find((s) => s.name === "Pim");
+  const applicant = world.scenario.applicants.find(
+    (a) => a.id === expected.studentId,
+  )!;
+  const evidence = student?.proof.scoring[0];
+  const verified =
+    world.state === "verified" && evidence?.status === "verified";
+  const steps: { icon: IconName; label: string }[] = [
+    { icon: "lock", label: "Private record" },
+    { icon: "file", label: "Authorized dataset" },
+    { icon: "shield", label: "Mathematical proof" },
+    {
+      icon: "globe",
+      label: world.mode === "fuji" ? "Avalanche" : "Local chain",
+    },
+  ];
+  return (
+    <div className="demo-chapter-layout">
+      <div className="demo-story">
+        <p className="demo-participant">
+          <Icon name="file" />
+          Examination authority
+        </p>
+        <h1>
+          Private scores.
+          <br />
+          Verifiable math.
+        </h1>
+        <p>{chapterCopy[1].text}</p>
+        <div className="demo-takeaway">
+          <Icon name="lock" />
+          <p>
+            The authority authenticates the records. The proof checks the
+            calculation.
+          </p>
+        </div>
+        <button
+          className="button button-primary"
+          onClick={() => setPublicView((v) => !v)}
+        >
+          {publicView ? "Look inside Pim’s record" : "Reveal the public proof"}
+          <Icon name={publicView ? "lock" : "arrow"} />
+        </button>
+        <button className="demo-text-action" onClick={inspect}>
+          Inspect ZK verification
+          <Icon name="external" size={15} />
+        </button>
+      </div>
+      <section
+        className={`demo-stage demo-proof-stage${publicView ? " public-view" : ""}`}
+        aria-label="Private scoring demonstration"
+        data-ui
+      >
+        <div className="demo-person">
+          <Avatar name="Pim" />
+          <div>
+            <h2>Pim’s calculation</h2>
+            <p>{cleanName(world.scenario.rulebooks[0].programName)}</p>
+          </div>
+        </div>
+        <div className="demo-score-window">
+          {!publicView ? (
+            <>
+              <p className="demo-stage-caption">
+                Inside this student’s private record
+              </p>
+              <div className="demo-private-scores">
+                {applicant.scores.map((s) => (
+                  <div key={s.id}>
+                    <span>
+                      {
+                        world.scenario.rulebooks[0].components.find(
+                          (c) => c.scoreId === s.id,
+                        )!.label
+                      }
+                    </span>
+                    <strong>{s.score.toFixed(2)}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="demo-stage-caption">
+                What a public observer can inspect
+              </p>
+              <div className="demo-public-proof">
+                <Icon name="shield" size={44} />
+                <strong>
+                  {verified
+                    ? world.mode === "fuji"
+                      ? "Calculation verified on Avalanche."
+                      : "Verified on local test chain."
+                    : "Verification unavailable."}
+                </strong>
+                <span>Raw scores hidden · Blinded total recorded</span>
+                {evidence && "totalCommitment" in evidence ? (
+                  <code>{evidence.totalCommitment?.slice(0, 22)}…</code>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="demo-proof-flow">
+          {steps.map((step) => (
+            <div key={step.label}>
+              <span>
+                <Icon name={step.icon} size={23} />
+              </span>
+              <strong>{step.label}</strong>
+            </div>
+          ))}
+        </div>
+        <p className="demo-footnote">
+          Program associations and eligibility can remain public. Full
+          admissions allocation is not proven by this circuit.
+        </p>
+      </section>
+    </div>
+  );
 };
-const AllocationChapter=({world,selectStudent}:{world:World;selectStudent:(id:string)=>void})=>{
- const [revealed,setRevealed]=useState(false);const recorded=world.students.length===9;const expected=world.scenario.expected;
- const groups=world.scenario.rulebooks.map((r,i)=>({rule:r,students:expected.filter(s=>recorded?world.students.find(t=>t.id===s.studentId)?.wallet.records[0].report.programId===world.programs[i]?.id:s.programId===r.programId)}));
- return <><div className="demo-chapter-layout"><div className="demo-story"><p className="demo-participant"><Icon name="chart"/>Admissions authority</p><h1>Nine students.<br/>Six places.</h1><p>{chapterCopy[2].text}</p><div className="demo-takeaway"><Icon name="info"/><p>Meeting the requirements doesn’t always mean getting a seat.</p></div><button className="button button-primary" onClick={()=>setRevealed(v=>!v)}>{revealed?'Look at the cohort':recorded?'Show recorded allocations':'Preview expected allocations'}<Icon name="arrow"/></button><details className="demo-explanation"><summary>Who makes the allocation?</summary><p>An authority-run, deterministic simulation applies preferences, rounded program scores and capacities. ZK proofs check supported scoring and eligibility; they do not prove the whole matching process.</p></details></div>
- <section className="demo-stage demo-allocation-stage" aria-label="Admissions allocation summary" data-ui><div className="demo-stage-top"><h2>{revealed?'The reported places.':'One cohort. One round.'}</h2><span>{recorded?'Recorded result summary':'Expected preparation outcomes'}</span></div>
- {!revealed?<div className="demo-cohort">{expected.map(s=><button key={s.studentId} onClick={()=>selectStudent(s.studentId)}><Avatar name={s.name}/><strong>{s.name}</strong><span>View student</span></button>)}</div>:<div className="demo-seat-board">{groups.map(group=><div className="demo-seat-column" key={group.rule.id}><h3>{cleanName(group.rule.programName)}</h3><span>2 places</span>{group.students.map(s=><button className="demo-seat filled" key={s.studentId} onClick={()=>selectStudent(s.studentId)}><Avatar name={s.name} small/><strong>{s.name}</strong>{s.name==='Mali'?<small>Second preference</small>:null}</button>)}</div>)}</div>}
- <div className="demo-outside-seats"><h3>Three results worth understanding.</h3>{expected.filter(s=>!s.programId).map(s=><button key={s.studentId} onClick={()=>selectStudent(s.studentId)}><Avatar name={s.name} small/><span><strong>{s.name}</strong><small>{s.name==='Narin'?'Eligible. No seat after ranking.':s.name==='Dao'?'Below the TGAT minimum.':'Below the Mathematics minimum.'}</small></span><Icon name="chevron" size={16}/></button>)}</div></section></div></>;
+const AllocationChapter = ({
+  world,
+  selectStudent,
+}: {
+  world: World;
+  selectStudent: (id: string) => void;
+}) => {
+  const [revealed, setRevealed] = useState(false);
+  const recorded = world.students.length === 9;
+  const expected = world.scenario.expected;
+  const groups = world.scenario.rulebooks.map((r, i) => ({
+    rule: r,
+    students: expected.filter((s) =>
+      recorded
+        ? world.students.find((t) => t.id === s.studentId)?.wallet.records[0]
+            .report.programId === world.programs[i]?.id
+        : s.programId === r.programId,
+    ),
+  }));
+  return (
+    <>
+      <div className="demo-chapter-layout">
+        <div className="demo-story">
+          <p className="demo-participant">
+            <Icon name="chart" />
+            Admissions authority
+          </p>
+          <h1>
+            Nine students.
+            <br />
+            Six places.
+          </h1>
+          <p>{chapterCopy[2].text}</p>
+          <div className="demo-takeaway">
+            <Icon name="info" />
+            <p>Meeting the requirements doesn’t always mean getting a seat.</p>
+          </div>
+          <button
+            className="button button-primary"
+            onClick={() => setRevealed((v) => !v)}
+          >
+            {revealed
+              ? "Look at the cohort"
+              : recorded
+                ? "Show recorded allocations"
+                : "Preview expected allocations"}
+            <Icon name="arrow" />
+          </button>
+          <details className="demo-explanation">
+            <summary>Who makes the allocation?</summary>
+            <p>
+              An authority-run, deterministic simulation applies preferences,
+              rounded program scores and capacities. ZK proofs check supported
+              scoring and eligibility; they do not prove the whole matching
+              process.
+            </p>
+          </details>
+        </div>
+        <section
+          className="demo-stage demo-allocation-stage"
+          aria-label="Admissions allocation summary"
+          data-ui
+        >
+          <div className="demo-stage-top">
+            <h2>
+              {revealed ? "The reported places." : "One cohort. One round."}
+            </h2>
+            <span>
+              {recorded
+                ? "Recorded result summary"
+                : "Expected preparation outcomes"}
+            </span>
+          </div>
+          {!revealed ? (
+            <div className="demo-cohort">
+              {expected.map((s) => (
+                <button
+                  key={s.studentId}
+                  onClick={() => selectStudent(s.studentId)}
+                >
+                  <Avatar name={s.name} />
+                  <strong>{s.name}</strong>
+                  <span>View student</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="demo-seat-board">
+              {groups.map((group) => (
+                <div className="demo-seat-column" key={group.rule.id}>
+                  <h3>{cleanName(group.rule.programName)}</h3>
+                  <span>2 places</span>
+                  {group.students.map((s) => (
+                    <button
+                      className="demo-seat filled"
+                      key={s.studentId}
+                      onClick={() => selectStudent(s.studentId)}
+                    >
+                      <Avatar name={s.name} small />
+                      <strong>{s.name}</strong>
+                      {s.name === "Mali" ? (
+                        <small>Second preference</small>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="demo-outside-seats">
+            <h3>Three results worth understanding.</h3>
+            {expected
+              .filter((s) => !s.programId)
+              .map((s) => (
+                <button
+                  key={s.studentId}
+                  onClick={() => selectStudent(s.studentId)}
+                >
+                  <Avatar name={s.name} small />
+                  <span>
+                    <strong>{s.name}</strong>
+                    <small>
+                      {s.name === "Narin"
+                        ? "Eligible. No seat after ranking."
+                        : s.name === "Dao"
+                          ? "Below the TGAT minimum."
+                          : "Below the Mathematics minimum."}
+                    </small>
+                  </span>
+                  <Icon name="chevron" size={16} />
+                </button>
+              ))}
+          </div>
+        </section>
+      </div>
+    </>
+  );
 };
-const StudentsChapter=({world,selected,setSelected}:{world:World;selected:string;setSelected:(id:string)=>void})=>{
- const expected=world.scenario.expected.find(s=>s.studentId===selected)??world.scenario.expected[1];const student=world.students.find(s=>s.id===expected.studentId);
- const replay=useMemo<ReplayWallet|undefined>(()=>student?{wallet:replayWallet(student),proof:replayProof(student),loadProof:async()=>{const fresh=await loadWorld(true);const updated=fresh.students.find(s=>s.id===student.id);if(!updated||fresh.state==='unavailable')throw Error('Verification unavailable');return replayProof(updated);}}:undefined,[student]);
- return <><div className="demo-student-intro"><div><p className="demo-participant"><Icon name="graduation"/>Student perspective</p><h1>Every result deserves<br/>an explanation.</h1><p>FairPass doesn’t decide your future. It helps you verify the evidence behind it.</p></div><label className="demo-student-select">Open a student’s wallet<select value={expected.studentId} onChange={e=>setSelected(e.target.value)}>{world.scenario.expected.map(s=><option key={s.studentId} value={s.studentId}>{s.name}</option>)}</select></label></div>
- <div className="demo-current-student"><Avatar name={expected.name}/><div><h2>{expected.name}’s wallet</h2><p>{expected.name==='Narin'?'Requirements met. Not selected after ranking.':expected.name==='Dao'?'A strong total, but the TGAT minimum was not met.':expected.name==='Ton'?'The Mathematics minimum was not met.':expected.name==='Mali'?'An offer at her second preference.':'An admission right, with evidence behind it.'}</p></div></div>
- {replay?<div className="demo-wallet" data-ui><StudentWallet key={student!.id} replay={replay}/></div>:<div className="demo-stage demo-empty"><Icon name="clock" size={36}/><h2>This wallet is not prepared yet.</h2><p>The scenario expects {expected.programId?'an offer':'no admission right'}. No issued token or verified proof is being claimed.</p></div>}</>;
+const StudentsChapter = ({
+  world,
+  selected,
+  setSelected,
+}: {
+  world: World;
+  selected: string;
+  setSelected: (id: string) => void;
+}) => {
+  const expected =
+    world.scenario.expected.find((s) => s.studentId === selected) ??
+    world.scenario.expected[1];
+  const student = world.students.find((s) => s.id === expected.studentId);
+  const replay = useMemo<ReplayWallet | undefined>(
+    () =>
+      student
+        ? {
+            wallet: replayWallet(student),
+            proof: replayProof(student),
+            loadProof: async () => {
+              const fresh = await loadWorld(true);
+              const updated = fresh.students.find((s) => s.id === student.id);
+              if (!updated || fresh.state === "unavailable")
+                throw Error("Verification unavailable");
+              return replayProof(updated);
+            },
+          }
+        : undefined,
+    [student],
+  );
+  return (
+    <>
+      <div className="demo-student-intro">
+        <div>
+          <p className="demo-participant">
+            <Icon name="graduation" />
+            Student perspective
+          </p>
+          <h1>
+            Your result.
+            <br />
+            On-chain evidence.
+          </h1>
+          <p>
+            Explore a non-transferable admission credential, its registry status
+            and the private scoring proof behind the result. Students need no
+            crypto wallet.
+          </p>
+        </div>
+        <label className="demo-student-select">
+          Open a student’s wallet
+          <select
+            value={expected.studentId}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            {world.scenario.expected.map((s) => (
+              <option key={s.studentId} value={s.studentId}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="demo-current-student">
+        <Avatar name={expected.name} />
+        <div>
+          <h2>{expected.name}’s wallet</h2>
+          <p>
+            {expected.name === "Narin"
+              ? "Requirements met. Not selected after ranking."
+              : expected.name === "Dao"
+                ? "A strong total, but the TGAT minimum was not met."
+                : expected.name === "Ton"
+                  ? "The Mathematics minimum was not met."
+                  : expected.name === "Mali"
+                    ? "An offer at her second preference."
+                    : "An admission right, with evidence behind it."}
+          </p>
+        </div>
+      </div>
+      {replay ? (
+        <div className="demo-wallet" data-ui>
+          <StudentWallet key={student!.id} replay={replay} />
+        </div>
+      ) : (
+        <div className="demo-stage demo-empty">
+          <Icon name="clock" size={36} />
+          <h2>This wallet is not prepared yet.</h2>
+          <p>
+            The scenario expects{" "}
+            {expected.programId ? "an offer" : "no admission right"}. No issued
+            token or verified proof is being claimed.
+          </p>
+        </div>
+      )}
+    </>
+  );
 };
-const VerifyChapter=({world,inspect}:{world:World;inspect:()=>void})=>{
- const [kind,setKind]=useState<'score'|'eligibility'|'capacity'>('score');const [score,setScore]=useState('89.25');const [busy,setBusy]=useState(false);const [results,setResults]=useState<Partial<Record<typeof kind,ExperimentResult>>>({});const [error,setError]=useState('');
- const original=world.scenario.applicants.find(a=>a.id===world.scenario.expected.find(s=>s.name==='Pim')!.studentId)!.scores[0].score;
- const result=results[kind];const completed=Object.values(results).filter(r=>r?.outcome==='rejected').length===3;
- const run=async()=>{setBusy(true);setError('');setResults(r=>({...r,[kind]:undefined}));try{const query=kind==='score'?`?score=${encodeURIComponent(score)}`:'';const value=await api<ExperimentResult>(`/demo/world/experiments/${kind}${query}`);setResults(r=>({...r,[kind]:value}));}catch{setError('This check is unavailable. Refresh the evidence and try again.');}finally{setBusy(false);}};
- return <><div className="demo-chapter-layout"><div className="demo-story"><p className="demo-participant"><Icon name="shield"/>Public verifier</p><h1>Don’t just trust it.<br/>Check the proof.</h1><p>{chapterCopy[4].text}</p><div className="demo-takeaway"><Icon name="lock"/><p>You can inspect the checks. You never need a wallet or permission to spend funds.</p></div><button className="demo-text-action" onClick={inspect}>View blockchain evidence<Icon name="external" size={15}/></button></div>
- <section className="demo-stage demo-security-stage" aria-label="Security playground" data-ui><div className="demo-experiment-tabs" role="group" aria-label="Choose a security experiment">{([['score','Change a score'],['eligibility','Break a rule'],['capacity','One more seat']] as const).map(([id,label])=><button key={id} onClick={()=>{setKind(id);setError('');}} aria-pressed={kind===id}>{results[id]?.outcome==='rejected'?<Icon name="check" size={15}/>:null}{label}</button>)}</div>
- <h2>{kind==='score'?'A changed score. The same evidence.':kind==='eligibility'?'An offer can’t erase a requirement.':'Two places. A third right?'}</h2>
- {kind==='score'?<><p>Pim’s TGAT record is {original.toFixed(2)}. Change the input and check it against the original authenticated record.</p><label className="demo-score-input">TGAT / 100<input type="number" min="0" max="100" step="0.01" value={score} onChange={e=>{setScore(e.target.value);setResults(r=>({...r,score:undefined}));}}/></label><span className="demo-check-kind">Actual Noir circuit constraint check</span></>:kind==='eligibility'?<><div className="demo-rule-check"><Avatar name="Dao"/><span><strong>Dao’s TGAT: 49</strong><small>Required: at least 50</small></span><Icon name="lock" size={28}/></div><p>In an isolated guard test, the authority reports an offer and confirmation. The verified scoring claim still says the requirement was not met.</p><span className="demo-check-kind">Historical V2 contract call · no transaction sent</span></>:<><div className="demo-capacity-check"><span><Icon name="check"/>Arun</span><span><Icon name="check"/>Pim</span><span className="extra"><Icon name="plus"/>Narin?</span></div><p>Both rights are active in the isolated guard registry. Narin is eligible and confirmed. Can the issuer create a third?</p><span className="demo-check-kind">Historical V2 contract call · no transaction sent</span></>}
- <button className="button button-primary" disabled={busy||world.state!=='verified'||!world.securityAvailable||(kind==='score'&&(score===''||Number(score)<0||Number(score)>100))} onClick={()=>void run()}>{busy?'Checking the evidence…':kind==='score'?'Check the changed score':kind==='eligibility'?'Check the eligibility guard':'Check the capacity guard'}<Icon name="arrow"/></button>
- {error?<p className="demo-check-error" role="alert">{error}</p>:null}{result?<div className={`demo-check-result ${result.outcome}`} role="status"><Icon name={result.outcome==='rejected'?'shield':'info'} size={26}/><div><strong>{result.message}</strong><p>{result.kind==='circuit_constraint_check'?'The actual circuit was checked locally. No blockchain transaction was submitted.':`${result.error} · Contract call at block ${result.blockNumber}. No transaction was submitted.`}</p></div></div>:null}
- {!world.securityAvailable?<p className="demo-footnote">Guard evidence is not available yet. No rejection is being claimed.</p>:null}</section></div>
- <div className="demo-finish"><h2>{completed?'The rules were published.\nThe math was verified.\nThe limits were enforced.':'Three checks. One clearer picture.'}</h2><p>FairPass — Your future. Verified.</p><div><a className="button button-primary" href="/student/wallet">Explore FairPass<Icon name="arrow"/></a><button className="button button-secondary" onClick={inspect}>View blockchain evidence</button></div></div></>;
+const VerifyChapter = ({
+  world,
+  inspect,
+}: {
+  world: World;
+  inspect: () => void;
+}) => {
+  const [kind, setKind] = useState<"score" | "eligibility" | "capacity">(
+    "score",
+  );
+  const [score, setScore] = useState("89.25");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState<
+    Partial<Record<typeof kind, ExperimentResult>>
+  >({});
+  const [error, setError] = useState("");
+  const original = world.scenario.applicants.find(
+    (a) =>
+      a.id === world.scenario.expected.find((s) => s.name === "Pim")!.studentId,
+  )!.scores[0].score;
+  const result = results[kind];
+  const completed =
+    Object.values(results).filter((r) => r?.outcome === "rejected").length ===
+    3;
+  const run = async () => {
+    setBusy(true);
+    setError("");
+    setResults((r) => ({ ...r, [kind]: undefined }));
+    try {
+      const query =
+        kind === "score" ? `?score=${encodeURIComponent(score)}` : "";
+      const value = await api<ExperimentResult>(
+        `/demo/world/experiments/${kind}${query}`,
+      );
+      setResults((r) => ({ ...r, [kind]: value }));
+    } catch {
+      setError(
+        "This check is unavailable. Refresh the evidence and try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div className="demo-chapter-layout">
+        <div className="demo-story">
+          <p className="demo-participant">
+            <Icon name="shield" />
+            Public verifier
+          </p>
+          <h1>
+            Don’t just trust it.
+            <br />
+            Check the proof.
+          </h1>
+          <p>{chapterCopy[4].text}</p>
+          <div className="demo-takeaway">
+            <Icon name="lock" />
+            <p>
+              You can inspect the checks. You never need a wallet or permission
+              to spend funds.
+            </p>
+          </div>
+          <button className="demo-text-action" onClick={inspect}>
+            View blockchain evidence
+            <Icon name="external" size={15} />
+          </button>
+        </div>
+        <section
+          className="demo-stage demo-security-stage"
+          aria-label="Security playground"
+          data-ui
+        >
+          <div
+            className="demo-experiment-tabs"
+            role="group"
+            aria-label="Choose a security experiment"
+          >
+            {(
+              [
+                ["score", "Change a score"],
+                ["eligibility", "Break a rule"],
+                ["capacity", "One more seat"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setKind(id);
+                  setError("");
+                }}
+                aria-pressed={kind === id}
+              >
+                {results[id]?.outcome === "rejected" ? (
+                  <Icon name="check" size={15} />
+                ) : null}
+                {label}
+              </button>
+            ))}
+          </div>
+          <h2>
+            {kind === "score"
+              ? "A changed score. The same evidence."
+              : kind === "eligibility"
+                ? "An offer can’t erase a requirement."
+                : "Two places. A third right?"}
+          </h2>
+          {kind === "score" ? (
+            <>
+              <p>
+                Pim’s TGAT record is {original.toFixed(2)}. Change the input and
+                check it against the original authenticated record.
+              </p>
+              <label className="demo-score-input">
+                TGAT / 100
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={score}
+                  onChange={(e) => {
+                    setScore(e.target.value);
+                    setResults((r) => ({ ...r, score: undefined }));
+                  }}
+                />
+              </label>
+              <span className="demo-check-kind">
+                Actual Noir circuit constraint check
+              </span>
+            </>
+          ) : kind === "eligibility" ? (
+            <>
+              <div className="demo-rule-check">
+                <Avatar name="Dao" />
+                <span>
+                  <strong>Dao’s TGAT: 49</strong>
+                  <small>Required: at least 50</small>
+                </span>
+                <Icon name="lock" size={28} />
+              </div>
+              <p>
+                In an isolated guard test, the authority reports an offer and
+                confirmation. The verified scoring claim still says the
+                requirement was not met.
+              </p>
+              <span className="demo-check-kind">
+                Historical V2 contract call · no transaction sent
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="demo-capacity-check">
+                <span>
+                  <Icon name="check" />
+                  Arun
+                </span>
+                <span>
+                  <Icon name="check" />
+                  Pim
+                </span>
+                <span className="extra">
+                  <Icon name="plus" />
+                  Narin?
+                </span>
+              </div>
+              <p>
+                Both rights are active in the isolated guard registry. Narin is
+                eligible and confirmed. Can the issuer create a third?
+              </p>
+              <span className="demo-check-kind">
+                Historical V2 contract call · no transaction sent
+              </span>
+            </>
+          )}
+          <button
+            className="button button-primary"
+            disabled={
+              busy ||
+              world.state !== "verified" ||
+              !world.securityAvailable ||
+              (kind === "score" &&
+                (score === "" || Number(score) < 0 || Number(score) > 100))
+            }
+            onClick={() => void run()}
+          >
+            {busy
+              ? "Checking the evidence…"
+              : kind === "score"
+                ? "Check the changed score"
+                : kind === "eligibility"
+                  ? "Check the eligibility guard"
+                  : "Check the capacity guard"}
+            <Icon name="arrow" />
+          </button>
+          {error ? (
+            <p className="demo-check-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {result ? (
+            <div
+              className={`demo-check-result ${result.outcome}`}
+              role="status"
+            >
+              <Icon
+                name={result.outcome === "rejected" ? "shield" : "info"}
+                size={26}
+              />
+              <div>
+                <strong>{result.message}</strong>
+                <p>
+                  {result.kind === "circuit_constraint_check"
+                    ? "The actual circuit was checked locally. No blockchain transaction was submitted."
+                    : `${result.error} · Contract call at block ${result.blockNumber}. No transaction was submitted.`}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {!world.securityAvailable ? (
+            <p className="demo-footnote">
+              Guard evidence is not available yet. No rejection is being
+              claimed.
+            </p>
+          ) : null}
+        </section>
+      </div>
+      <div className="demo-finish">
+        <h2>
+          {completed
+            ? "The rules were published.\nThe math was verified.\nThe limits were enforced."
+            : "Three checks. One clearer picture."}
+        </h2>
+        <p>FairPass — Your future. Verified.</p>
+        <div>
+          <a className="button button-primary" href="/student/wallet">
+            Explore FairPass
+            <Icon name="arrow" />
+          </a>
+          <button className="button button-secondary" onClick={inspect}>
+            View blockchain evidence
+          </button>
+        </div>
+      </div>
+    </>
+  );
 };
 
-const DemoPage=()=>{
- const resetRequested=useRef(false);
- const [world,setWorld]=useState<World|null>(null),[error,setError]=useState(''),[evidence,setEvidence]=useState<string|null>(null),[selected,setSelected]=useState('');
- useEffect(()=>{document.body.classList.add('demo-view');return()=>document.body.classList.remove('demo-view');},[]);
- const id=window.location.pathname.split('/')[2]??'';const chapter=chapters.findIndex(c=>c.id===id);const [visited,setVisited]=useState<string[]>([]);
- useEffect(()=>{let active=true;void loadWorld().then(value=>{if(active){setWorld(value);try{const saved=JSON.parse(localStorage.getItem(progressKey)??'null');if(saved?.instanceId===value.scenario.instanceId&&saved?.definitionDigest===value.scenario.definitionDigest){setVisited(saved.visited??[]);setSelected(saved.studentId??'');}}catch{ /* Progress is optional. */ }}}).catch(()=>{if(active)setError('The Demo World could not be loaded.');});return()=>{active=false;};},[]);
- useEffect(()=>{if(!world||resetRequested.current)return;try{const next=Array.from(new Set([...visited,...(chapter>=0?[chapters[chapter].id]:[])]));localStorage.setItem(progressKey,JSON.stringify({instanceId:world.scenario.instanceId,definitionDigest:world.scenario.definitionDigest,visited:next,studentId:selected}));}catch{/* Read-only journey works without storage. */}},[world,chapter,visited,selected]);
- const refresh=async()=>{setError('');try{setWorld(await loadWorld(true));}catch{setError('Verification is unavailable. Try again in a moment.');}};
- const studentId=selected||world?.scenario.expected.find(s=>s.name==='Pim')?.studentId||'';
- const chooseStudent=(student:string)=>{setSelected(student);if(world)try{localStorage.setItem(progressKey,JSON.stringify({instanceId:world.scenario.instanceId,definitionDigest:world.scenario.definitionDigest,visited,studentId:student}));}catch{}window.history.pushState(null,'','/demo/students');window.dispatchEvent(new PopStateEvent('popstate'));window.scrollTo(0,0);};
- const restart=()=>{resetRequested.current=true;try{localStorage.removeItem(progressKey);}catch{}setVisited([]);setSelected('');};
- const closeEvidence=useMemo(()=>()=>setEvidence(null),[]);
- return <div className="demo-world"><a className="skip-link" href="#demo-main">Skip to the story</a><header className="demo-header"><a href="/demo" className="wordmark" aria-label="FairPass Demo World"><span className="brand-symbol"><Icon name="graduation" size={26}/></span>FairPass<span className="brand-period">.</span></a><div className="demo-environment"><span/>Demo Environment</div><a className="demo-product-link" href="/student/wallet">Open FairPass<Icon name="external" size={14}/></a></header>
- {chapter>=0?<nav className="demo-chapters" aria-label="Story chapters">{chapters.map((c,i)=><a key={c.id} href={`/demo/${c.id}`} className={chapter===i?'current':visited.includes(c.id)?'visited':''} aria-current={chapter===i?'step':undefined}><span>{visited.includes(c.id)&&chapter!==i?<Icon name="check" size={14}/>:<i/>}</span>{c.label}</a>)}</nav>:null}
- <main id="demo-main" tabIndex={-1}>{!world?<div className="demo-loading" role="status"><Icon name="clock" size={35}/><h1>{error||'Opening one shared world…'}</h1>{error?<button className="button button-primary" onClick={()=>void refresh()}>Try again</button>:<p>Nine students. Three programs. The evidence behind every result.</p>}</div>:<>
- {chapter<0?<><div className="demo-welcome"><div className="demo-welcome-copy"><h1>See how<br/>trust is built.</h1><p>Follow nine students through one university admission round—and discover what happens when the rules can be independently checked.</p><div className="demo-welcome-actions"><a className="button button-primary" href="/demo/rules">Start the story<Icon name="arrow"/></a><a className="demo-text-action" href="#demo-perspectives">Explore freely<Icon name="arrow" size={16}/></a></div><Status world={world}/><p className="demo-runtime-note">{world.mode==='local'?'Real local proofs. Fuji replay awaits approved deployment.':world.mode==='fuji'?'Confirmed evidence from the Avalanche Fuji test network.':'The scenario is ready. Confirmed blockchain evidence is not available yet.'}</p></div>
- <div className="demo-welcome-stage" aria-label="Nine students and six university places" data-ui><div className="demo-world-count"><strong>9</strong><span>students.<br/>One shared story.</span></div><div className="demo-orbit-students">{world.scenario.expected.map(s=><button key={s.studentId} onClick={()=>chooseStudent(s.studentId)} aria-label={`Explore ${s.name}’s result`}><Avatar name={s.name}/><span>{s.name}</span></button>)}</div><div className="demo-world-places"><span>Three programs</span><strong>Six places.</strong><div>{world.scenario.rulebooks.map(r=><span key={r.id}>{cleanName(r.programName)}<b>2</b></span>)}</div></div></div></div>
- <section className="demo-perspectives" id="demo-perspectives"><div><h2>One world.<br/>Four ways to see it.</h2><p>Explore a perspective, or follow the whole story.</p></div><div className="demo-perspective-links">{([{role:'University',text:'Set the rules.',icon:'university',chapter:'rules'},{role:'Examination & admissions authority',text:'Authenticate scores. Process results.',icon:'file',chapter:'proof'},{role:'Student',text:'Understand what happened.',icon:'graduation',chapter:'students'},{role:'Public verifier',text:'Check the proof.',icon:'shield',chapter:'verify'}] as const).map(r=><a key={r.role} href={`/demo/${r.chapter}`}><Icon name={r.icon} size={25}/><span><strong>{r.role}</strong><small>{r.text}</small></span><Icon name="arrow"/></a>)}</div></section></>:<>
- <div className="demo-evidence-strip"><Status world={world}/><button onClick={()=>void refresh()} aria-label="Refresh demo evidence"><Icon name="activity" size={15}/>Refresh evidence</button>{world.state!=='verified'?<span>{world.reason}</span>:null}</div>
- <div key={id} className="demo-chapter-content">{chapter===0?<RulesChapter world={world} inspect={()=>setEvidence('rules')}/>:chapter===1?<ProofChapter world={world} inspect={()=>setEvidence('proof')}/>:chapter===2?<AllocationChapter world={world} selectStudent={chooseStudent}/>:chapter===3?<StudentsChapter world={world} selected={studentId} setSelected={setSelected}/>:<VerifyChapter key={world.observedAt} world={world} inspect={()=>setEvidence('all')}/>}</div>
- <nav className="demo-next" aria-label="Story navigation"><a className="demo-text-action" href={chapter===0?'/demo':`/demo/${chapters[chapter-1].id}`}><Icon name="chevron" className="demo-back" size={16}/>Back</a><span>{chapter+1} of 5 chapters</span>{chapter<4?<a className="button button-primary" href={`/demo/${chapters[chapter+1].id}`}>{['Private scores, public proof','Meet the applicants','Open their wallets','Try to break the rules'][chapter]}<Icon name="arrow"/></a>:<a className="button button-secondary" href="/demo" onClick={restart}>Restart demo<Icon name="arrow"/></a>}</nav>
- </>}{error?<p className="demo-check-error" role="alert">{error}</p>:null}
- </>}</main><footer className="demo-footer"><span>One world. Nine students. Three programs.</span><a href="/demo" onClick={restart}>Restart demo</a><a href="/university">Presenter access<Icon name="external" size={13}/></a></footer>{world&&evidence?<Evidence world={world} kind={evidence} onClose={closeEvidence}/>:null}</div>;
+const DemoPage = () => {
+  const resetRequested = useRef(false);
+  const [world, setWorld] = useState<World | null>(null),
+    [error, setError] = useState(""),
+    [evidence, setEvidence] = useState<string | null>(null),
+    [selected, setSelected] = useState("");
+  useEffect(() => {
+    document.body.classList.add("demo-view");
+    return () => document.body.classList.remove("demo-view");
+  }, []);
+  const id = window.location.pathname.split("/")[2] ?? "";
+  const chapter = chapters.findIndex((c) => c.id === id);
+  const [visited, setVisited] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    void loadWorld()
+      .then((value) => {
+        if (active) {
+          setWorld(value);
+          try {
+            const saved = JSON.parse(
+              localStorage.getItem(progressKey) ?? "null",
+            );
+            if (
+              saved?.instanceId === value.scenario.instanceId &&
+              saved?.definitionDigest === value.scenario.definitionDigest
+            ) {
+              setVisited(saved.visited ?? []);
+              setSelected(saved.studentId ?? "");
+            }
+          } catch {
+            /* Progress is optional. */
+          }
+        }
+      })
+      .catch(() => {
+        if (active) setError("The Demo World could not be loaded.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!world || resetRequested.current) return;
+    try {
+      const next = Array.from(
+        new Set([...visited, ...(chapter >= 0 ? [chapters[chapter].id] : [])]),
+      );
+      localStorage.setItem(
+        progressKey,
+        JSON.stringify({
+          instanceId: world.scenario.instanceId,
+          definitionDigest: world.scenario.definitionDigest,
+          visited: next,
+          studentId: selected,
+        }),
+      );
+    } catch {
+      /* Read-only journey works without storage. */
+    }
+  }, [world, chapter, visited, selected]);
+  const refresh = async () => {
+    setError("");
+    try {
+      setWorld(await loadWorld(true));
+    } catch {
+      setError("Verification is unavailable. Try again in a moment.");
+    }
+  };
+  const studentId =
+    selected ||
+    world?.scenario.expected.find((s) => s.name === "Pim")?.studentId ||
+    "";
+  const chooseStudent = (student: string) => {
+    setSelected(student);
+    if (world)
+      try {
+        localStorage.setItem(
+          progressKey,
+          JSON.stringify({
+            instanceId: world.scenario.instanceId,
+            definitionDigest: world.scenario.definitionDigest,
+            visited,
+            studentId: student,
+          }),
+        );
+      } catch {}
+    window.history.pushState(null, "", "/demo/students");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    window.scrollTo(0, 0);
+  };
+  const restart = () => {
+    resetRequested.current = true;
+    try {
+      localStorage.removeItem(progressKey);
+    } catch {}
+    setVisited([]);
+    setSelected("");
+  };
+  const closeEvidence = useMemo(() => () => setEvidence(null), []);
+  return (
+    <div className="demo-world">
+      <a className="skip-link" href="#demo-main">
+        Skip to the story
+      </a>
+      <header className="demo-header">
+        <a href="/demo" className="wordmark" aria-label="FairPass Demo World">
+          <span className="brand-symbol">
+            <Icon name="graduation" size={26} />
+          </span>
+          FairPass<span className="brand-period">.</span>
+        </a>
+        <div className="demo-environment">
+          <span />
+          Web3 admissions demo
+        </div>
+        <a className="demo-product-link" href="/student/wallet">
+          Open FairPass
+          <Icon name="external" size={14} />
+        </a>
+      </header>
+      {chapter >= 0 ? (
+        <nav className="demo-chapters" aria-label="Story chapters">
+          {chapters.map((c, i) => (
+            <a
+              key={c.id}
+              href={`/demo/${c.id}`}
+              className={
+                chapter === i
+                  ? "current"
+                  : visited.includes(c.id)
+                    ? "visited"
+                    : ""
+              }
+              aria-current={chapter === i ? "step" : undefined}
+            >
+              <span>
+                {visited.includes(c.id) && chapter !== i ? (
+                  <Icon name="check" size={14} />
+                ) : (
+                  <i />
+                )}
+              </span>
+              {c.label}
+            </a>
+          ))}
+        </nav>
+      ) : null}
+      <main id="demo-main" tabIndex={-1}>
+        {!world ? (
+          <div className="demo-loading" role="status">
+            <Icon name="clock" size={35} />
+            <h1>{error || "Opening one shared world…"}</h1>
+            {error ? (
+              <button
+                className="button button-primary"
+                onClick={() => void refresh()}
+              >
+                Try again
+              </button>
+            ) : (
+              <p>
+                Nine students. Three programs. The evidence behind every result.
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            {chapter < 0 ? (
+              <>
+                <div className="demo-welcome">
+                  <div className="demo-welcome-copy">
+                    <h1>
+                      Admissions.
+                      <br />
+                      Proof on-chain.
+                    </h1>
+                    <p>
+                      Understand your admission result and check the evidence
+                      behind it. Follow nine fictional students through one
+                      admission round, with Web3 on Avalanche helping make the
+                      rules and results checkable while keeping scores private.
+                    </p>
+                    <div className="demo-welcome-actions">
+                      <a className="button button-primary" href="/demo/rules">
+                        Explore the protocol
+                        <Icon name="arrow" />
+                      </a>
+                      <a className="demo-text-action" href="/transparency">
+                        Go to FairPass Login
+                        <Icon name="external" size={16} />
+                      </a>
+                    </div>
+                    <Status world={world} />
+                    <p className="demo-runtime-note">
+                      {world.mode === "local"
+                        ? "Real local proofs. Fuji replay awaits approved deployment."
+                        : world.mode === "fuji"
+                          ? "Confirmed evidence from the Avalanche Fuji test network."
+                          : "The scenario is ready. Confirmed blockchain evidence is not available yet."}
+                    </p>
+                  </div>
+                  <div
+                    className="demo-welcome-stage"
+                    aria-label="Nine students and six university places"
+                    data-ui
+                  >
+                    <div className="demo-world-count">
+                      <strong>9</strong>
+                      <span>
+                        students.
+                        <br />
+                        One shared story.
+                      </span>
+                    </div>
+                    <div className="demo-orbit-students">
+                      {world.scenario.expected.map((s) => (
+                        <button
+                          key={s.studentId}
+                          onClick={() => chooseStudent(s.studentId)}
+                          aria-label={`Explore ${s.name}’s result`}
+                        >
+                          <Avatar name={s.name} />
+                          <span>{s.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="demo-world-places">
+                      <span>Three programs</span>
+                      <strong>Six places.</strong>
+                      <div>
+                        {world.scenario.rulebooks.map((r) => (
+                          <span key={r.id}>
+                            {cleanName(r.programName)}
+                            <b>2</b>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <section className="demo-perspectives" id="demo-perspectives">
+                  <div>
+                    <h2>
+                      Who signs.
+                      <br />
+                      What gets verified.
+                    </h2>
+                    <p>
+                      Separate authorities. Public contract checks. Explore each
+                      role in the same fictional admission round.
+                    </p>
+                  </div>
+                  <div className="demo-perspective-links">
+                    {(
+                      [
+                        {
+                          role: "University",
+                          text: "Publish and lock the scoring policy.",
+                          icon: "university",
+                          chapter: "rules",
+                        },
+                        {
+                          role: "Examination & admissions authority",
+                          text: "Commit exam records. Prove private scoring.",
+                          icon: "file",
+                          chapter: "proof",
+                        },
+                        {
+                          role: "Student",
+                          text: "Inspect a non-transferable admission right.",
+                          icon: "graduation",
+                          chapter: "students",
+                        },
+                        {
+                          role: "Public verifier",
+                          text: "Challenge the proof and contract guards.",
+                          icon: "shield",
+                          chapter: "verify",
+                        },
+                      ] as const
+                    ).map((r) => (
+                      <a key={r.role} href={`/demo/${r.chapter}`}>
+                        <span>
+                          <strong>{r.role}</strong>
+                          <small>{r.text}</small>
+                        </span>
+                        <Icon name="arrow" />
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              </>
+            ) : (
+              <>
+                <div className="demo-evidence-strip">
+                  <Status world={world} />
+                  <button
+                    onClick={() => void refresh()}
+                    aria-label="Refresh demo evidence"
+                  >
+                    <Icon name="activity" size={15} />
+                    Refresh evidence
+                  </button>
+                  {world.state !== "verified" ? (
+                    <span>{world.reason}</span>
+                  ) : null}
+                </div>
+                <div key={id} className="demo-chapter-content">
+                  {chapter === 0 ? (
+                    <RulesChapter
+                      world={world}
+                      inspect={() => setEvidence("rules")}
+                    />
+                  ) : chapter === 1 ? (
+                    <ProofChapter
+                      world={world}
+                      inspect={() => setEvidence("proof")}
+                    />
+                  ) : chapter === 2 ? (
+                    <AllocationChapter
+                      world={world}
+                      selectStudent={chooseStudent}
+                    />
+                  ) : chapter === 3 ? (
+                    <StudentsChapter
+                      world={world}
+                      selected={studentId}
+                      setSelected={setSelected}
+                    />
+                  ) : (
+                    <VerifyChapter
+                      key={world.observedAt}
+                      world={world}
+                      inspect={() => setEvidence("all")}
+                    />
+                  )}
+                  <ChapterEvidence
+                    world={world}
+                    chapter={chapter}
+                    inspect={() =>
+                      setEvidence(
+                        chapter === 0
+                          ? "rules"
+                          : chapter === 1
+                            ? "proof"
+                            : chapter === 2 || chapter === 3
+                              ? "students"
+                              : "all",
+                      )
+                    }
+                  />
+                </div>
+                <nav className="demo-next" aria-label="Story navigation">
+                  <a
+                    className="demo-text-action"
+                    href={
+                      chapter === 0
+                        ? "/demo"
+                        : `/demo/${chapters[chapter - 1].id}`
+                    }
+                  >
+                    <Icon name="chevron" className="demo-back" size={16} />
+                    Back
+                  </a>
+                  <span>{chapter + 1} of 5 chapters</span>
+                  {chapter < 4 ? (
+                    <a
+                      className="button button-primary"
+                      href={`/demo/${chapters[chapter + 1].id}`}
+                    >
+                      {
+                        [
+                          "Private scores, public proof",
+                          "Meet the applicants",
+                          "Open their wallets",
+                          "Try to break the rules",
+                        ][chapter]
+                      }
+                      <Icon name="arrow" />
+                    </a>
+                  ) : (
+                    <a
+                      className="button button-secondary"
+                      href="/demo"
+                      onClick={restart}
+                    >
+                      Restart demo
+                      <Icon name="arrow" />
+                    </a>
+                  )}
+                </nav>
+              </>
+            )}
+            {error ? (
+              <p className="demo-check-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </>
+        )}
+      </main>
+      <footer className="demo-footer">
+        <span>
+          Fictional admissions · Non-transferable credentials · No official TCAS
+          integration
+        </span>
+        <a href="/demo" onClick={restart}>
+          Restart demo
+        </a>
+        <a href="/university">
+          Presenter access
+          <Icon name="external" size={13} />
+        </a>
+      </footer>
+      {world && evidence ? (
+        <Evidence world={world} kind={evidence} onClose={closeEvidence} />
+      ) : null}
+    </div>
+  );
 };
 export default DemoPage;

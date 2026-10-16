@@ -29,6 +29,8 @@ services:
       target: runtime
     environment:
       FAIRPASS_LOCAL: 'true'
+      DEMO_JUDGE_ACCESS: 'true'
+      TRUST_PROXY_HOPS: '1'
       FAIRPASS_LOAD_DEPLOYMENT: 'true'
       CHAIN_ID: '31337'
       REGISTRY_VERSION: '2'

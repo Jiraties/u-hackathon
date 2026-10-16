@@ -1,7 +1,7 @@
 import {api,type Wallet,type Proof} from '../services/api';
 import type {DemoWorldSnapshot} from '../../../backend/shared/demoWorld';
 export type World=DemoWorldSnapshot;
-export const chapters=[{id:'rules',label:'The rules',role:'University'},{id:'proof',label:'Private scoring',role:'Examination authority'},{id:'allocation',label:'Six places',role:'Admissions authority'},{id:'students',label:'Your result',role:'Students'},{id:'verify',label:'Check the proof',role:'Public verifier'}] as const;
+export const chapters=[{id:'rules',label:'On-chain rules',role:'University'},{id:'proof',label:'ZK scoring',role:'Examination authority'},{id:'allocation',label:'Allocation',role:'Admissions authority'},{id:'students',label:'Admission rights',role:'Students'},{id:'verify',label:'Contract guards',role:'Public verifier'}] as const;
 let cached:{value:World;until:number}|undefined;
 let inflight:Promise<World>|undefined;
 export const loadWorld=(fresh=false):Promise<World>=>{

@@ -28,6 +28,7 @@
     "demo:prepare-signers": "node --import tsx scripts/prepare-demo-signers.ts",
     "demo:local": "node --import tsx scripts/prepare-demo-world-local.ts",
     "demo:export": "node --import tsx scripts/export-demo-evidence.ts",
+    "demo:judge:browser": "node --import tsx scripts/judge-demo-browser.ts",
     "demo:browser": "node --import tsx scripts/demo-world-browser.ts"
   },
   "dependencies": {

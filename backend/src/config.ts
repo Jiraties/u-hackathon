@@ -8,6 +8,7 @@ const schema = z.object({
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017'),
   MONGODB_DATABASE: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('fairpass'),
   DEMO_WORLD_INSTANCE: z.string().regex(/^[a-zA-Z0-9-]{1,40}$/).optional(),
+  DEMO_JUDGE_ACCESS: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   DEMO_READ_ONLY: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   ISSUER_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   DEMO_REPLAY_MANIFEST: z.string().min(1).optional(),

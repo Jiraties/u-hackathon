@@ -135,6 +135,7 @@ export interface EventPage {
   }[];
 }
 export interface Session {
+  demo?: boolean;
   token: string;
   expiresAt: string;
   institutionId?: string;

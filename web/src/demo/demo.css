@@ -219,3 +219,52 @@ body.demo-view { min-width:0; }
 .demo-scoring-details { margin:22px 0 0; padding:18px 20px; background:#f1f6fc; border-radius:16px; }
 .demo-scoring-details>summary { font-size:14px; font-weight:600; color:#315b7c; }
 .demo-scoring-details .scoring-evidence-card { margin-top:18px; }
+
+/* The hackathon walkthrough puts actual registry evidence beside the product story. */
+.demo-welcome { grid-template-columns:1.05fr 1fr; gap:56px; padding:45px 0 60px; }
+.demo-welcome h1 { font-size:clamp(44px,4.8vw,66px); letter-spacing:-2.8px; }
+.demo-welcome-copy>.demo-participant { font-size:14px; margin-bottom:20px; }
+.demo-chain-overview { min-width:0; padding:28px; background:var(--demo-ground); border-radius:26px; }
+.demo-chain-heading { display:flex; align-items:center; gap:12px; }
+.demo-chain-heading>svg { color:var(--demo-accent); flex-shrink:0; }
+.demo-chain-heading h2 { font-size:21px; letter-spacing:-.5px; }
+.demo-chain-heading p { font-size:13px; color:#526b83; margin:5px 0 0; }
+.demo-chain-mode { margin-left:auto; color:var(--demo-accent); font-size:12px; font-weight:600; }
+.demo-chain-caption { font-size:13px; color:#526b83; margin:25px 0 12px; }
+.demo-chain-counts { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:0 0 20px; }
+.demo-chain-counts>div { display:flex; flex-direction:column-reverse; gap:5px; }
+.demo-chain-counts dt { font-size:13px; color:#526b83; }
+.demo-chain-counts dd { margin:0; font-size:44px; font-weight:600; line-height:1.1; letter-spacing:-1.5px; font-variant-numeric:tabular-nums; }
+.demo-chain-contract { background:#fcfdff; padding:16px 18px; border-radius:12px; }
+.demo-chain-contract>span { font-size:13px; font-weight:600; }
+.demo-chain-contract code { display:block; overflow-wrap:anywhere; font-size:12px; line-height:1.7; color:#42627f; margin-top:7px; }
+.demo-chain-contract p { font-size:13px; margin-top:8px; }
+.demo-chain-path { list-style:none; padding:0; margin:22px 0 12px; display:grid; gap:19px; }
+.demo-chain-path li { display:flex; align-items:center; gap:13px; }
+.demo-chain-path svg { color:var(--demo-accent); flex-shrink:0; }
+.demo-chain-path strong,.demo-chain-path small { display:block; }
+.demo-chain-path strong { font-size:14px; font-weight:600; }
+.demo-chain-path small { margin-top:4px; font-size:12px; line-height:1.5; color:#526b83; }
+.demo-contract-evidence { display:grid; grid-template-columns:1fr 1fr; gap:45px; padding:32px 0 12px; margin-top:20px; }
+.demo-contract-explanation h2 { font-size:24px; letter-spacing:-.7px; margin:0 0 23px; }
+.demo-contract-explanation dl { display:grid; gap:18px; margin:0; }
+.demo-contract-explanation dt { font-size:13px; font-weight:650; color:var(--demo-accent); margin-bottom:7px; }
+.demo-contract-explanation dd { font-size:14px; line-height:1.7; margin:0; max-width:60ch; color:#42627f; }
+.demo-receipt-preview { min-width:0; background:var(--demo-ground); border-radius:18px; padding:24px; align-self:start; }
+.demo-receipt-heading { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:9px; }
+.demo-receipt-heading h3 { font-size:16px; }
+.demo-receipt-heading>span { font-size:12px; color:#526b83; }
+.demo-receipt-preview ol { list-style:none; padding:0; margin:23px 0 14px; display:grid; gap:20px; }
+.demo-receipt-preview li>div { display:flex; flex-wrap:wrap; gap:6px 12px; justify-content:space-between; margin-bottom:5px; }
+.demo-receipt-preview li strong { font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.demo-receipt-preview li span { font-size:12px; color:#526b83; font-variant-numeric:tabular-nums; }
+.demo-receipt-preview li>a { display:inline-flex; gap:8px; align-items:center; color:var(--demo-accent); }
+.demo-receipt-preview code { font-size:12px; overflow-wrap:anywhere; }
+.demo-receipt-empty { font-size:14px; line-height:1.65; margin:20px 0; color:#526b83; }
+@media (max-width:1000px) { .demo-welcome { gap:30px; } .demo-chain-overview { padding:23px; } .demo-contract-evidence { gap:28px; } }
+@media (max-width:760px) { .demo-welcome { grid-template-columns:1fr; padding:30px 0; } .demo-welcome h1 { font-size:clamp(38px,9.5vw,55px); letter-spacing:-1.8px; } .demo-chain-overview { padding:22px; } .demo-chain-heading h2 { font-size:18px; } .demo-chain-mode { font-size:11px; } .demo-chain-heading { gap:9px; } .demo-contract-evidence { grid-template-columns:1fr; gap:25px; margin-top:25px; } .demo-contract-explanation h2 { font-size:23px; } .demo-receipt-preview { padding:21px; } }
+.demo-footer>span { min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.6; }
+.demo-chain-mode,.demo-chain-overview>.demo-text-action { color:#075da5; }
+.demo-chain-mode,.demo-chain-contract code,.demo-chain-path small { font-size:13px; }
+.demo-chain-counts { margin-top:25px; }
+.demo-chain-caption { margin-top:0; }

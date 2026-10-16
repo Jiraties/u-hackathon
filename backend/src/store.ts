@@ -4,7 +4,7 @@ import type { AdmissionRulebook, PreviewApplicant } from '../shared/domain.js';
 import type { Hex } from 'viem';
 import type { ChainReference } from './chain.js';
 export type Student = { _id: string; name: string; passwordHash: string };
-export type Session = { _id: string; studentId: string; role?: 'student' | 'institution'; institutionId?: string; expiresAt: Date };
+export type Session = { demo?: boolean; _id: string; studentId: string; role?: 'student' | 'institution'; institutionId?: string; expiresAt: Date };
 export type InstitutionalUser = { _id:string; name:string; institutionId:string; passwordHash:string };
 export type SimulationRun = { authenticatedInput?:{datasetId:Hex;datasetRoot:Hex;datasetVersion:number;precision:"hundredths-half-up"}; _id:string; inputHash:Hex; institutionId:string; programIds?:Hex[]; rulebooks:AdmissionRulebook[]; applicants:PreviewApplicant[]; assignments:Record<string,string|null>; createdAt:Date; completedAt?:Date };
 

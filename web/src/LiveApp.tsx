@@ -1,3 +1,4 @@
+import {DemoAccess,DemoSessionNotice} from "./components/DemoAccess";
 import { ResultProofSummary } from "./components/ResultProofSummary";
 import { ScoringEvidenceCard } from "./components/ScoringEvidenceCard";
 import toast from "react-hot-toast";
@@ -266,6 +267,7 @@ function SignIn({
           </>
         )}
       </p>
+      <DemoAccess role={role} onLogin={onLogin} />
       <p>
         Accounts are provisioned by the platform administrator. No wallet
         connection is required.
@@ -654,6 +656,7 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
   ) : null;
   return (
     <div className="wallet-page">
+      {session?.demo ? <DemoSessionNotice onLogin={save} /> : null}
       <div className="wallet-welcome">
         <span>
           Hi, {name}
@@ -2199,6 +2202,7 @@ function University() {
     [editing, setEditing] = useState<AdmissionRulebook | null>(null),
     [editRevision, setEditRevision] = useState(0);
   const [zkEnabled,setZkEnabled] = useState(false);
+  const [capabilitiesLoaded,setCapabilitiesLoaded] = useState(false);
   const [drafts, setDrafts] = useState<
     { rule: AdmissionRulebook; revision: number }[]
   >([]);
@@ -2218,6 +2222,7 @@ function University() {
         api<{scoringProofs:boolean}>("/public/capabilities"),
       ]);
       setZkEnabled(capabilities.scoringProofs);
+      setCapabilitiesLoaded(true);
       setPrograms(p);
       setResults(r);
       setDrafts(workspace.drafts);
@@ -2232,6 +2237,7 @@ function University() {
   if (!session) return <SignIn role="institution" onLogin={save} />;
   return (
     <>
+      {session.demo ? <DemoSessionNotice institution /> : null}
       <Heading
         eyebrow={session.institutionId!}
         title="Set the rules. Make them checkable."
@@ -2303,6 +2309,7 @@ function University() {
               <h2>Program rulebooks</h2>
               <button
                 className="button button-primary"
+                disabled={busy || !capabilitiesLoaded}
                 onClick={() => {
                   setEditing({
                     ...defaultRule(zkEnabled),

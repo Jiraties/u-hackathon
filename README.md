@@ -140,6 +140,28 @@ A result attestation and an admission-right token are separate records. An offer
 
 The live app is the default. To inspect the original fixture-only frontend, open `/student/wallet?preview=1` or `/university?preview=1`. Preview data is separate from the API and never replaces a failed live request. Sample codes such as `FP-2027-00842` work in preview only; live credentials use bytes32 IDs.
 
+### Judge access in the main app
+
+In the canonical local Demo World stack, the regular `/student/wallet` and
+`/university` sign-in pages offer **Try student demo** and **Try university demo**.
+No password is required. These buttons open the real connected interface with a
+one-hour session for a fixed fictional account; they do not open `/demo` or the
+frontend preview.
+
+Student access includes the prepared scenario wallets, an explicit **Try non-admitted demo** button, outcome labels and a wallet switcher. University access uses the
+shared `demo-office` account and supports drafts, on-chain rule publication,
+processing, scoring proofs and issuance. Use 2027 / Round 3 and the prepared
+scenario students for the authenticated exam dataset. A student must confirm and
+have an eligible verified scoring claim before issuance. Existing active rights
+still prevent a second right for the same student/year. Changes are shared and
+persist in the local demo; do not reset history to repeat a workflow.
+
+The canonical Compose override enables `DEMO_JUDGE_ACCESS=true` only for its
+local presenter. The server also requires `FAIRPASS_LOCAL=true`, chain 31337, a
+write-enabled API and a successful chain readiness check. Fuji and mainnet do not
+offer password-free access, even if this flag is set. Normal sign-in remains
+available and unchanged. Demo sessions stop working when demo access is disabled.
+
 ## 3. Frontend development
 
 Use Node.js **24**. Install pnpm and frontend dependencies:
