@@ -117,3 +117,5 @@ const ineligibleEvidence=renderEvidence({programId:'example',status:'verified',e
 assert.ok(ineligibleEvidence.includes('ZK proof verified'));
 assert.ok(ineligibleEvidence.includes('Requirements not met'));
 assert.ok(ineligibleEvidence.includes('complete allocation has not been independently verified'));
+
+require('./check-office-workflow.cjs');

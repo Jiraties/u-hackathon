@@ -145,6 +145,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public code: string,
+    public issues?: { path: (string | number)[]; message: string }[],
   ) {
     super(code);
   }
@@ -185,16 +186,21 @@ export async function api<T>(
     throw new ApiError(
       response.status,
       body.error ?? body.status ?? "request_failed",
+      body.issues,
     );
   return body as T;
 }
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError))
     return error instanceof Error ? error.message : "Operation unavailable.";
-  if(error.code === "authenticated_exam_record_required") return "The exam authority has not authenticated a matching score record yet. Ask the admissions team to check the exam dataset.";
-  if(error.code === "result_scores_do_not_match_authenticated_exam_record") return "These result scores do not match the authenticated exam record. Verification has stopped; ask the admissions team to review the source records.";
-  if(error.code === "verified_eligible_scoring_required") return "Verify this applicant’s score calculation and eligibility before issuing an admission token.";
-  if(error.code === "zk_registry_upgrade_required") return "This registry cannot verify private scoring proofs. Connect the verified-scoring registry first.";
+  if (error.code === "authenticated_exam_record_required")
+    return "The exam authority has not authenticated a matching score record yet. Ask the admissions team to check the exam dataset.";
+  if (error.code === "result_scores_do_not_match_authenticated_exam_record")
+    return "These result scores do not match the authenticated exam record. Verification has stopped; ask the admissions team to review the source records.";
+  if (error.code === "verified_eligible_scoring_required")
+    return "Verify this applicant’s score calculation and eligibility before issuing an admission token.";
+  if (error.code === "zk_registry_upgrade_required")
+    return "This registry cannot verify private scoring proofs. Connect the verified-scoring registry first.";
   if (error.status === 401 && error.code === "invalid_credentials")
     return "The ID or password is incorrect. Check your account ID and use the sign-in page for your account type.";
   if (error.status === 401)
@@ -202,11 +208,42 @@ export function errorMessage(error: unknown): string {
   if (error.status === 403)
     return "This account cannot manage that institution or program.";
   if (error.status === 404) return "No record was found for this ID.";
-  if (error.status === 400)
-    return "Check the fields and use a full 0x + 64 hex character ID where required.";
+  if (error.status === 400) {
+    if (error.issues?.length)
+      return error.issues
+        .slice(0, 3)
+        .map(
+          (issue) => `${issue.path.join(" → ") || "Input"}: ${issue.message}`,
+        )
+        .join(". ");
+    return "Some inputs are invalid. Review the required fields, score ranges and selected programs before trying again.";
+  }
   if (error.status === 429)
     return "Too many requests. Please wait before trying again.";
+  const recovery: Record<string, string> = {
+    draft_revision_conflict:
+      "A newer draft was saved. Compare it with your changes before saving again.",
+    published_rulebook_immutable:
+      "This version is published. Open its history and create a permitted amendment or a new intake.",
+    intake_already_published:
+      "This intake already has different published rules. Review its history before creating another version.",
+    intake_already_processed:
+      "This intake already belongs to a processing run. Open Saved processing runs and resume that run.",
+    run_payload_conflict:
+      "This run ID belongs to different inputs. Open the saved run; do not retry it with edited applicants.",
+    run_dataset_conflict:
+      "The exam dataset changed after this run was saved. Ask the exam authority to review it before continuing.",
+    confirmation_required:
+      "The student must accept this offer in FairPass before the record can be issued.",
+    rules_not_locked:
+      "The program rules are not ready. Publish and confirm the rulebook before processing applicants.",
+    capacity_exceeded:
+      "Capacity changed. Refresh the intake and select only the available places.",
+    issuance_allowance_exceeded:
+      "Issuance allowance is exhausted. Refresh the intake; an authorized reallocation may be required.",
+  };
+  if (recovery[error.code]) return recovery[error.code];
   if (error.status === 409)
-    return `This operation conflicts with saved state (${error.code}). Retry the same request after checking its status.`;
+    return "This request conflicts with saved records. Refresh the intake and inspect its saved run or rulebook before retrying.";
   return "The service is unavailable. Please retry; no successful blockchain operation is being claimed.";
 }
