@@ -5,7 +5,7 @@ import type { ChainReference } from './chain.js';
 export type Student = { _id: string; name: string; passwordHash: string };
 export type Session = { _id: string; studentId: string; role?: 'student' | 'institution'; institutionId?: string; expiresAt: Date };
 export type InstitutionalUser = { _id:string; name:string; institutionId:string; passwordHash:string };
-export type SimulationRun = { _id:string; inputHash:Hex; institutionId:string; rulebooks:AdmissionRulebook[]; applicants:PreviewApplicant[]; assignments:Record<string,string|null>; createdAt:Date; completedAt?:Date };
+export type SimulationRun = { _id:string; inputHash:Hex; institutionId:string; programIds?:Hex[]; rulebooks:AdmissionRulebook[]; applicants:PreviewApplicant[]; assignments:Record<string,string|null>; createdAt:Date; completedAt?:Date };
 
 export type ProgramDoc = { _id: Hex; rules: unknown; rulesHash: Hex; year: number; capacity: number; registration?: ChainReference; lock?: ChainReference; simulationRunId?:string; institutionId?:string; rulebook?:AdmissionRulebook };
 export type ResultDoc = {
@@ -13,10 +13,12 @@ export type ResultDoc = {
   report: { academicYear: number; round: string; outcome: 'admitted' | 'not_admitted'; programId: Hex | null; scores: Record<string, number>; preferences: Hex[]; trace: unknown; source: 'fictional-simulator' | 'external-adapter'; rulebooks?:AdmissionRulebook[]; scoreRecords?:PreviewApplicant['scores']; qualifications?:Record<string,string>; runId?:string };
   commitment: Hex; inputHash: Hex; publication?: ChainReference; confirmationRequestedAt?: Date; confirmation?: ChainReference; issuance?: ChainReference;
 };
+export type RuleDraft = { _id:string; institutionId:string; revision:number; rule:AdmissionRulebook; updatedAt:Date };
 export interface Store {
+  drafts: Pick<Collection<RuleDraft>, 'find' | 'findOne' | 'updateOne'>;
   operators: Pick<Collection<InstitutionalUser>, 'findOne' | 'insertOne'>;
-  runs: Pick<Collection<SimulationRun>, 'findOne' | 'insertOne' | 'updateOne'>;
-  students: Pick<Collection<Student>, 'findOne' | 'insertOne'>;
+  runs: Pick<Collection<SimulationRun>, 'find' | 'findOne' | 'insertOne' | 'updateOne'>;
+  students: Pick<Collection<Student>, 'find' | 'findOne' | 'insertOne'>;
   sessions: Pick<Collection<Session>, 'findOne' | 'insertOne' | 'deleteOne'>;
   programs: Pick<Collection<ProgramDoc>, 'findOne' | 'insertOne' | 'updateOne' | 'find'>;
   results: Pick<Collection<ResultDoc>, 'findOne' | 'insertOne' | 'updateOne' | 'find'>;
@@ -28,6 +30,7 @@ export async function connectStore(uri: string, name: string) {
   await client.connect();
   try {
   const db = client.db(name);
+  const drafts = db.collection<RuleDraft>('ruleDrafts');
   const operators = db.collection<InstitutionalUser>('operators');
   const runs = db.collection<SimulationRun>('runs');
   const students = db.collection<Student>('students');
@@ -41,7 +44,7 @@ export async function connectStore(uri: string, name: string) {
     results.createIndex({ credentialId: 1 }, { unique: true }),
     results.createIndex({ studentId: 1 }),
   ]);
-  const store: Store = { operators, runs, students, sessions, programs, results,
+  const store: Store = { drafts, operators, runs, students, sessions, programs, results,
     async subject(studentId, year, candidate) {
       const _id = `${studentId}:${year}`;
       try { await subjects.updateOne({ _id }, { $setOnInsert: { value: candidate } }, { upsert: true }); }

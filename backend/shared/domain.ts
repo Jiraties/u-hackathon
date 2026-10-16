@@ -113,6 +113,7 @@ export interface AdmissionRulebook {
   programId: string;
   institutionId: string;
   programName: string;
+  degree?: string;
   faculty: string;
   academicYear: number;
   round: string;
@@ -176,6 +177,7 @@ export const examComponents: readonly Omit<
 ];
 export const validateRulebook = (rule: AdmissionRulebook): string[] => {
   const errors: string[] = [];
+  if(rule.degree!==undefined && (typeof rule.degree!=="string" || !rule.degree.trim() || rule.degree.length>200)) errors.push("Enter a degree of at most 200 characters.");
   if (
     !rule.id?.trim() ||
     !rule.programId?.trim() ||
@@ -278,6 +280,7 @@ export const canonicalRulebook = (rule: AdmissionRulebook): string => {
     programId: rule.programId,
     institutionId: rule.institutionId,
     programName: rule.programName,
+    ...(rule.degree===undefined?{}:{degree:rule.degree}),
     faculty: rule.faculty,
     academicYear: rule.academicYear,
     round: rule.round,

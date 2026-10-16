@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Icon } from "./Icon";
 export type PageId = "wallet" | "university" | "transparency" | "verify";
 const navigation: { id: PageId; label: string; href: string }[] = [
@@ -6,7 +6,9 @@ const navigation: { id: PageId; label: string; href: string }[] = [
   { id: "verify", label: "Verify a token", href: "/verify" },
   { id: "transparency", label: "Transparency", href: "/transparency" },
 ];
-export const Layout = ({ page, children, live = false }: { page: PageId; children: ReactNode; live?:boolean }) => (
+export const Layout = ({ page, children, live = false }: { page: PageId; children: ReactNode; live?:boolean }) => {
+  useEffect(()=>{if(live){document.body.classList.add("connected-view");document.documentElement.lang="en";}return()=>document.body.classList.remove("connected-view");},[live]);
+  return (
   <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className={`site-header${page === "wallet" ? " wallet-header" : ""}`}>
@@ -18,3 +20,4 @@ export const Layout = ({ page, children, live = false }: { page: PageId; childre
     <footer id="prototype-note"><a href="/student/wallet" className="footer-brand">FairPass.</a><span>University-issued. Independently checkable.</span><p>{live?"Fictional admissions · Chain evidence where available · No university affiliation or official TCAS integration.":"Fictional records · No university affiliation, TCAS integration, or live blockchain verification."}</p></footer>
   </>
 );
+};

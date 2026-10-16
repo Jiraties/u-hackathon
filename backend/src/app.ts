@@ -65,6 +65,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     await store.results.updateOne({ _id: doc._id }, { $set: { publication } });
   }
   const institutionId = config.INSTITUTION_ID ?? 'fairpass-demo';
+  const metadata=(d:import('./store.js').ProgramDoc|null)=>d?{institutionName:config.INSTITUTION_NAME??'Example University',programName:d.rulebook?.programName??'Registered program',faculty:d.rulebook?.faculty,rulebookId:d.rulebook?.id,degree:d.rulebook?.degree}:null;
   const office = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const session = await store.sessions.findOne({ _id: tokenHash(bearer(req)), role: 'institution', institutionId, expiresAt: { $gt: new Date() } });
@@ -105,12 +106,47 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     transformation:z.literal('normalize-to-100'),weightPercent:z.number().positive().max(100),minimumPercent:z.number().min(0).max(100).nullable()
   }).strict();
   const ruleSchema=z.object({
-    id,programId:id,institutionId:id,programName:z.string().min(1).max(200),faculty:z.string().min(1).max(200),
+    id,programId:id,institutionId:id,programName:z.string().min(1).max(200),degree:z.string().min(1).max(200).refine(s=>!!s.trim()).optional(),faculty:z.string().min(1).max(200),
     academicYear:z.number().int().min(2020).max(2100),round:z.string().min(1).max(80),capacity:z.number().int().min(1).max(10000),version:z.number().int().positive(),
     method:z.literal('normalized-weighted-sum'),components:z.array(componentSchema).min(1).max(20),
     requiredSubjects:z.array(id).max(20),qualifications:z.array(z.object({field:z.literal('curriculum'),equals:z.enum(['Science–Mathematics','Arts–Languages'])}).strict()).max(2),
     status:z.enum(['draft','preview']),createdAt:z.iso.datetime(),sealedAt:z.iso.datetime().nullable(),commitment:hex.nullable(),chainReference:z.null(),publication:z.null()
   }).strict();
+  app.get('/v1/office/workspace',office,async(_req,res)=>{
+    const drafts=await store.drafts.find({institutionId:res.locals.institutionId}).limit(100).toArray();
+    res.json({institutionId:res.locals.institutionId,drafts});
+  });
+  app.get('/v1/office/students',office,async(_req,res)=>{
+    // This deployment has one institution. Never return authentication fields.
+    const students=await store.students.find({}).limit(200).toArray();
+    res.json(students.map(s=>({id:s._id,name:s.name})));
+  });
+  app.post('/v1/office/rulebooks/drafts',office,async(req,res)=>{
+    const input=z.object({rule:ruleSchema,expectedRevision:z.number().int().nonnegative()}).strict().parse(req.body);
+    if(input.rule.institutionId!==res.locals.institutionId) fail(403,'program_outside_institution');
+    const key=`${res.locals.institutionId}:${input.rule.id}`;
+    const published=await store.programs.findOne({'rulebook.id':input.rule.id,institutionId:res.locals.institutionId});
+    if(published) fail(409,'published_rulebook_immutable');
+    const current=await store.drafts.findOne({_id:key});
+    if((current?.revision??0)!==input.expectedRevision) fail(409,'draft_revision_conflict');
+    const revision=input.expectedRevision+1;
+    const result=await store.drafts.updateOne({_id:key,...(current?{revision:input.expectedRevision}:{revision:{$exists:false}})},
+      {$set:{institutionId:res.locals.institutionId,rule:input.rule,revision,updatedAt:new Date()}},{upsert:!current});
+    if(current && !result.modifiedCount) fail(409,'draft_revision_conflict');
+    res.json({rule:input.rule,revision});
+  });
+  app.get('/v1/office/simulations/:id',office,async(req,res)=>{
+    const run=await store.runs.findOne({_id:id.parse(req.params.id),institutionId:res.locals.institutionId});
+    if(!run) fail(404,'run_not_found');
+    const programs=await store.programs.find({institutionId:res.locals.institutionId,'rulebook.id':{$in:run.rulebooks.map(r=>r.id)}}).toArray();
+    const programIds=run.programIds??run.rulebooks.map(r=>programs.find(p=>p.rulebook?.id===r.id)?._id);
+    if(programIds.some(p=>!p)) fail(409,'run_program_unavailable');
+    res.json({runId:run._id,programIds,applicants:run.applicants});
+  });
+  app.get('/v1/office/simulations',office,async(_req,res)=>{
+    const runs=await store.runs.find({institutionId:res.locals.institutionId}).limit(30).toArray();
+    res.json(runs.map(r=>({runId:r._id,createdAt:r.createdAt,completedAt:r.completedAt??null,assignments:r.assignments})));
+  });
   app.post('/v1/office/rulebooks/publish',office,async(req,res)=>{
     const rule:AdmissionRulebook=ruleSchema.parse(req.body);
     if(rule.institutionId !== res.locals.institutionId) fail(403,'program_outside_institution');
@@ -181,7 +217,8 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       let assignments:Record<string,string|null>;
       try { assignments=allocatePreview(rules,input.applicants); } catch { fail(400,'invalid_cohort'); }
       if(!run) {
-        run={_id:input.runId,inputHash,institutionId,rulebooks:rules,applicants:input.applicants,assignments,createdAt:new Date()};
+        if(programs.some(p=>p.simulationRunId&&p.simulationRunId!==input.runId)) fail(409,'intake_already_processed');
+        run={_id:input.runId,inputHash,institutionId,programIds:input.programIds,rulebooks:rules,applicants:input.applicants,assignments,createdAt:new Date()};
         await store.runs.insertOne(run);
       }
       // Claim all intakes before any result broadcast. Retry resumes the same run.
@@ -289,7 +326,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   app.get('/v1/me/wallet', student, async (_req, res) => {
     const profile = await store.students.findOne({ _id: res.locals.studentId });
     const docs = await store.results.find({ studentId: res.locals.studentId }).toArray();
-    const records = await Promise.all(docs.map(async d => ({ resultId: d.resultId, report: d.report,
+    const records = await Promise.all(docs.map(async d => ({ resultId: d.resultId, report: d.report, program:metadata(d.report.programId?await store.programs.findOne({_id:d.report.programId}):null),
       commitment: d.commitment, confirmationRequestedAt: d.confirmationRequestedAt ?? null,
       publication:d.publication ?? null, issuance:d.issuance ?? null,
       credential: await chain.read('credential', [d.credentialId]).then(c => c[1] ? { credentialId: d.credentialId, programId: c[0], status: statuses[c[1]], lifecycle:c[1] === 2 ? 'enrolled' : statuses[c[1]] } : null) })));
@@ -355,7 +392,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const docs = await store.programs.find({}).limit(200).toArray();
     res.json(await Promise.all(docs.map(async d => {
       const p = await chain.read('programs', [d._id]);
-      return { programId: d._id, issuer: p[0], academicYear: p[1], capacity: p[2], active: p[3], historicalIssued: p[4], issuanceAllowance: p[5],
+      return { metadata:metadata(d), programId: d._id, issuer: p[0], academicYear: p[1], capacity: p[2], active: p[3], historicalIssued: p[4], issuanceAllowance: p[5],
         rulesHash: p[6], lockedAt: String(p[7]), rules: d.rules, rulebook:d.rulebook ?? null, registration:d.registration ?? null, lock:d.lock ?? null, rulesMatch: (d.rulebook ? await rulebookCommitment(d.rulebook) : rulesCommitment(d.rules)) === p[6], ...chain.info };
     })));
   });
@@ -371,7 +408,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       if (!c[1]) { res.status(404).json({ status: 'not_found', ...chain.info }); return; }
       const authorized = await chain.read('institutions', [c[2]]);
       res.json({ credentialId, type: 'admission_right', status: statuses[c[1]], lifecycle: c[1] === 2 ? 'enrolled' : statuses[c[1]],
-        programId: c[0], issuer: c[2], academicYear: c[3], issuerCurrentlyAuthorized: authorized,
+        metadata:metadata(await store.programs.findOne({_id:c[0]})), programId: c[0], issuer: c[2], academicYear: c[3], issuerCurrentlyAuthorized: authorized,
         source: 'chain', holderIdentityVerified: false, ...chain.info });
     } catch { res.status(503).json({ status: 'verification_unavailable' }); }
   });

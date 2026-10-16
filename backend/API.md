@@ -139,3 +139,21 @@ Wallet DTOs add publication/issuance receipts and credential lifecycle. Simulato
 Shared ranking uses unrounded normalized weighted sums, stable summation and ascending applicant IDs for exact ties. Display scores round to two decimals. Result attestations retain salted Keccak fairpass-result-v1. The legacy CLI simulator remains a compatibility protocol; browser processing uses the shared full-rulebook engine.
 
 See [Live demo guide](../docs/live-demo-guide.md) for setup and tests.
+
+## Reference UI adaptation (English)
+
+These routes require an institution bearer session and return `Cache-Control: no-store`:
+
+| Route | Purpose |
+| --- | --- |
+| `GET /v1/office/workspace` | Institution-scoped rulebook drafts with `revision` and `updatedAt`. |
+| `POST /v1/office/rulebooks/drafts` | `{rule, expectedRevision}` → `{rule, revision}`. First save uses revision 0. Stale revisions and edits to published rulebooks return 409. |
+| `GET /v1/office/students` | Provisioned student `{id,name}` directory for this single-institution deployment; passwords and hashes are excluded. |
+| `GET /v1/office/simulations` | Up to 30 scoped run summaries and completion state. |
+| `GET /v1/office/simulations/:id` | Exact saved processing payload for retry/resume; private to the configured institution. |
+
+`INSTITUTION_NAME` defaults to `Example University`. It is a display label, not authenticated university affiliation. Program and verification DTOs include public program metadata. Wallet records include their assigned program metadata; subject scores remain private.
+
+Rulebooks support an optional `degree` string (1–200 nonblank characters). The degree is included in the canonical commitment only when supplied. Existing rulebooks without it retain their historical commitment. Nothing migrates existing records.
+
+The connected interface uses real authenticated confirmation and issuance queues. It never imports fixture confirmations as authorization. Public QR scanning remains unavailable; the code/link field is supported. `?preview=1` retains the original fictional frontend separately.

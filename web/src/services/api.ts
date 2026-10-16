@@ -1,4 +1,5 @@
 import type { AdmissionRulebook } from "../domain/rulebooks";
+export interface ProgramMetadata { institutionName:string; programName:string; faculty?:string; rulebookId?:string; degree?:string }
 export interface ChainInfo {
   chainId: number;
   contractAddress: string;
@@ -11,6 +12,7 @@ export interface Receipt {
   blockNumber: string;
 }
 export interface PublicProgram extends ChainInfo {
+  metadata?:ProgramMetadata;
   programId: string;
   issuer: string;
   academicYear: number;
@@ -27,6 +29,7 @@ export interface PublicProgram extends ChainInfo {
   lock: Receipt | null;
 }
 export interface Credential extends ChainInfo {
+  metadata?:ProgramMetadata;
   credentialId: string;
   programId: string;
   issuer: string;
@@ -37,6 +40,7 @@ export interface Credential extends ChainInfo {
   holderIdentityVerified: false;
 }
 export interface WalletRecord {
+  program?:ProgramMetadata|null;
   resultId: string;
   commitment: string;
   confirmationRequestedAt: string | null;
@@ -48,6 +52,10 @@ export interface WalletRecord {
     outcome: "admitted" | "not_admitted";
     programId: string | null;
     scores: Record<string, number>;
+    preferences?: string[];
+    programName?: string;
+    scoreRecords?: import("../domain/models").ScoreRecord[];
+    qualifications?: Record<string,string>;
     source: string;
     rulebooks?: AdmissionRulebook[];
     runId?: string;

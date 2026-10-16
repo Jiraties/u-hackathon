@@ -262,14 +262,22 @@ test('shared rulebook publication and persisted simulation enforce institutional
   const student=(await request(app).post('/v1/auth/login').send({studentId:'shared-z',password}).expect(200)).body.token;
   const authOffice=`Bearer ${office}`,authStudent=`Bearer ${student}`;
   const rule:import('../shared/domain.js').AdmissionRulebook={id:'shared-rule',programId:'shared-engineering',institutionId:'fairpass-demo',programName:'Fictional Engineering',faculty:'Engineering',academicYear:2028,round:'shared-round',capacity:1,version:1,method:'normalized-weighted-sum',components:[{scoreId:'gpax',label:'GPAX',source:'demo-school-record',sourceComponentId:'GPAX',maximum:4,transformation:'normalize-to-100',weightPercent:100,minimumPercent:50}],requiredSubjects:['gpax'],qualifications:[{field:'curriculum',equals:'Science–Mathematics'}],status:'draft',createdAt:new Date().toISOString(),sealedAt:null,commitment:null,chainReference:null,publication:null};
+  await request(app).get('/v1/office/workspace').set('Authorization',authStudent).expect(401);
+  const directory=(await request(app).get('/v1/office/students').set('Authorization',authOffice).expect(200)).body;
+  assert.deepEqual(Object.keys(directory[0]).sort(),['id','name']);
+  await request(app).post('/v1/office/rulebooks/drafts').set('Authorization',authOffice).send({rule,expectedRevision:0}).expect(200);
+  await request(app).post('/v1/office/rulebooks/drafts').set('Authorization',authOffice).send({rule,expectedRevision:0}).expect(409);
+  assert.equal((await request(app).get('/v1/office/workspace').set('Authorization',authOffice).expect(200)).body.drafts[0].revision,1);
+  await request(app).post('/v1/office/rulebooks/drafts').set('Authorization',authOffice).send({rule:{...rule,institutionId:'other'},expectedRevision:1}).expect(403);
   const hash=await rulebookCommitment(rule);
   assert.equal(hash,'0x'+createHash('sha256').update(canonicalRulebook(rule)).digest('hex'));
-  for(const mutation of [{capacity:2},{round:'different'},{requiredSubjects:[]},{qualifications:[]},{version:2},{components:[{...rule.components[0],minimumPercent:51}]}])
+  for(const mutation of [{degree:'Bachelor of Engineering'},{capacity:2},{round:'different'},{requiredSubjects:[]},{qualifications:[]},{version:2},{components:[{...rule.components[0],minimumPercent:51}]}])
     assert.notEqual(await rulebookCommitment({...rule,...mutation}),hash);
   await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authStudent).send(rule).expect(401);
   await request(app).get('/v1/me/wallet').set('Authorization',authOffice).expect(401);
   await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send({...rule,institutionId:'other'}).expect(403);
   const published=(await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send(rule).expect(201)).body;
+  await request(app).post('/v1/office/rulebooks/drafts').set('Authorization',authOffice).send({rule,expectedRevision:1}).expect(409);
   assert.equal(published.rulesHash,hash);assert.ok(published.lock.transactionHash);
   const retry=(await request(app).post('/v1/office/rulebooks/publish').set('Authorization',authOffice).send(rule).expect(201)).body;
   assert.equal(retry.lock.transactionHash,published.lock.transactionHash);
@@ -282,6 +290,8 @@ test('shared rulebook publication and persisted simulation enforce institutional
   await request(app).post('/v1/office/simulations').set('Authorization',authStudent).send(payload).expect(401);
   await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send({...payload,programIds:[randomId()]}).expect(403);
   const processed=(await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send(payload).expect(201)).body;
+  assert.deepEqual((await request(app).get('/v1/office/simulations/shared-run').set('Authorization',authOffice).expect(200)).body,payload);
+  await request(app).get('/v1/office/simulations/shared-run').set('Authorization',authStudent).expect(401);
   assert.deepEqual(processed.assignments,allocatePreview([rule],applicants));
   await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send(payload).expect(201);
   await request(app).post('/v1/office/simulations').set('Authorization',authOffice).send({...payload,runId:'second-run'}).expect(409);
@@ -320,30 +330,20 @@ test('browser: publish rules → process cohort → student confirmation → ins
   const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
   const office=await browser.newPage({viewport:{width:1440,height:1000}}),student=await browser.newPage({viewport:{width:1440,height:1000}});
   const errors:string[]=[];for(const page of [office,student])page.on('pageerror',error=>errors.push(error.message));
-  await office.goto(base+'/university');
-  await office.getByLabel('Operator ID').fill('browser-office');await office.getByLabel('Password',{exact:true}).fill(password);await office.getByRole('button',{name:'Sign in',exact:true}).click();
-  await office.getByLabel('Program slug').fill('browser-engineering');await office.getByLabel('Admission round').fill('browser-round');await office.getByRole('button',{name:'Continue',exact:true}).click();
-  await office.getByRole('button',{name:'Continue',exact:true}).click();await office.getByRole('button',{name:'Continue',exact:true}).click();
-  await office.getByRole('button',{name:'Publish and lock rules',exact:true}).click();await office.getByRole('heading',{name:'Rules locked on chain',exact:true}).waitFor();
-  await office.getByLabel('Locked program').selectOption({label:'Fictional Engineering · browser-round'});
-  await office.getByLabel('Student ID 1', {exact:true}).fill('browser-pim');await office.getByLabel('TGAT / 100',{exact:true}).fill('95');
-  await office.getByRole('button',{name:'Add fictional applicant',exact:true}).click();await office.getByLabel('Student ID 2',{exact:true}).fill('browser-narin');await office.getByLabel('TGAT / 100',{exact:true}).nth(1).fill('50');
-  await office.getByRole('button',{name:'Process and record results',exact:true}).click();await office.getByText('Results are saved and recorded.',{exact:false}).waitFor();
-  await student.goto(base+'/student/wallet');await student.getByLabel('Student ID',{exact:true}).fill('browser-pim');await student.getByLabel('Password',{exact:true}).fill(password);await student.getByRole('button',{name:'Sign in',exact:true}).click();
-  await student.getByRole('heading',{name:'Admission offered',exact:true}).waitFor();await student.getByRole('button',{name:'Check result integrity',exact:true}).click();await student.getByRole('heading',{name:'Result integrity: verified',exact:true}).waitFor();
-  await student.getByRole('button',{name:'Request confirmation',exact:true}).click();await student.getByText('Confirmation requested. Waiting for institution issuance.',{exact:true}).waitFor();
-  await office.getByRole('button',{name:'Refresh confirmations',exact:true}).click();await office.getByRole('button',{name:'Issue admission right',exact:true}).click();await office.getByRole('link',{name:'Public verification',exact:true}).waitFor();
-  await student.reload();await student.getByRole('link',{name:'Verify admission right',exact:true}).click();await student.getByRole('heading',{name:'Valid admission right',exact:true}).waitFor();
-  const credentialId=new URL(student.url()).pathname.split('/').pop()!;assert.match(credentialId,/^0x[0-9a-f]{64}$/);
+  const {browserJourney}=await import('../scripts/browser-journey.js');
+  async function capture(page:import('playwright').Page,name:string){
+    await page.screenshot({path:path.resolve('cache/connected-'+name+'-desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.resolve('cache/connected-'+name+'-mobile.png'),fullPage:true});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,name+' fits mobile');
+    if(name==='wallet'||name==='non-admitted')assert.equal(await page.getByRole('link',{name:'Back to myTCAS',exact:false}).isVisible(),true);
+    await page.setViewportSize({width:1440,height:1000});
+  }
+  const credentialId=await browserJourney({office,student,base,operatorId:'browser-office',studentId:'browser-pim',rejectedId:'browser-narin',password,round:'browser-round',capture});
   assert.equal((await chain.read('credential',[credentialId]))[1],1);
-  await student.screenshot({path:path.resolve('cache/browser-verification.png'),fullPage:true});
-  await student.goto(base+'/transparency');await student.getByRole('heading',{name:'Fictional Engineering',exact:true}).waitFor();await student.getByRole('button',{name:'View registry events',exact:true}).click();await student.getByText('RightIssued',{exact:true}).waitFor();
-  await student.screenshot({path:path.resolve('cache/browser-transparency.png'),fullPage:true});
-  await student.goto(base+'/student/wallet');await student.getByRole('button',{name:'Sign out',exact:true}).click();await student.getByRole('heading',{name:'Sign in',exact:true}).waitFor();
-  await student.getByLabel('Student ID',{exact:true}).fill('browser-narin');await student.getByLabel('Password',{exact:true}).fill(password);await student.getByRole('button',{name:'Sign in',exact:true}).click();await student.getByRole('heading',{name:'Not admitted',exact:true}).waitFor();
-  assert.equal(await student.getByRole('link',{name:'Verify admission right',exact:true}).count(),0);
-  await student.screenshot({path:path.resolve('cache/browser-wallet.png'),fullPage:true});
-  await office.screenshot({path:path.resolve('cache/browser-office.png'),fullPage:true});
+  await student.goto(base+'/verify/0x'+'f'.repeat(64));await student.getByRole('heading',{name:'Token not found',exact:true}).waitFor();
+  await student.route('**/api/v1/public/verify/*',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({status:'verification_unavailable'})}));
+  await student.goto(base+'/verify/'+credentialId);await student.getByRole('alert').waitFor();assert.equal(await student.getByRole('heading',{name:'Valid admission right',exact:true}).count(),0);
   assert.deepEqual(errors,[]);
   } catch(error) { console.error(error); throw error; }
 });

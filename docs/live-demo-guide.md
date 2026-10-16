@@ -32,20 +32,20 @@ docker compose --profile tools run --rm tools dist/scripts/provision-demo.js
 Open http://localhost:8080. Local accounts use the DEMO_PASSWORD in compose.yaml.
 
 1. Open **For universities**, sign in as **demo-office**.
-2. Build a rulebook with a unique round, capacity 1 and TGAT weight 100%. Review and publish; wait for **Rules locked on chain**.
-3. Select the locked program. Add **demo-pim** with TGAT 95 and **demo-narin** with TGAT 50. Process fictional results.
+2. Click **Create rulebook**. Build a rulebook with a unique round, capacity 1 and TGAT weight 100%. Save draft if needed, then review and **Publish on Avalanche**; wait for **Rules locked on chain**.
+3. Open **Process admissions** and select the locked program. Add **demo-pim** with TGAT 95 and **demo-narin** with TGAT 50. Choose **Preview allocation**, then **Process and record results**.
 4. In another browser/tab, open **My wallet**, sign in as demo-pim, check result integrity and request confirmation.
-5. Refresh confirmations in the institution workspace; issue the admission right.
+5. Open **Issue admission tokens**, choose the program, refresh confirmations, select the confirmed student, then **Review & issue**. Approve the final issuance confirmation.
 6. Refresh the wallet and open public verification. Compare the program/credential/contract with Transparency and registry events.
 7. Sign in as demo-narin: a saved result attestation is available, with no admission right.
 
 Accounts/results live in MongoDB. Sessions live in sessionStorage per tab, expire after eight hours and are invalidated on sign out. No machine tokens or signing keys are sent to the browser.
 
-One intake has one immutable rulebook and one simulation run. Use a new round for another cohort. Retry the same request after timeouts; do not invent IDs to bypass saved state. The browser processes one program per cohort; the API supports multiple programs and ranked preferences with the same shared engine.
+One intake has one immutable rulebook and one simulation run. Use a new round for another cohort. Retry the same request after timeouts; do not invent IDs to bypass saved state. The browser and API support multiple programs from the same year/round and ranked preferences with the same shared engine. Reorder preferences before previewing the allocation.
 
 ## Fuji
 
-Set backend/.env to CHAIN_ID=43113, the correct RPC/contract/deployment block, unique machine tokens, funded authorized issuer/authority signers, and a database dedicated to this contract. INSTITUTION_ID defaults to fairpass-demo. Set a unique DEMO_PASSWORD with at least 12 characters.
+Set backend/.env to CHAIN_ID=43113, the correct RPC/contract/deployment block, unique machine tokens, funded authorized issuer/authority signers, and a database dedicated to this contract. INSTITUTION_ID defaults to fairpass-demo; INSTITUTION_NAME defaults to Example University. Set a unique DEMO_PASSWORD with at least 12 characters.
 
 ~~~sh
 docker compose -f compose.yaml -f compose.fuji.yaml up -d --build
@@ -71,7 +71,7 @@ npm exec --prefix backend -- playwright install chromium --only-shell
 FAIRPASS_BROWSER_TEST=1 npm test --prefix backend
 ~~~
 
-Browser E2E uses Chromium, temporary MongoDB and Hardhat on port 18545. It publishes rules, processes two accounts, confirms as a student, issues as the institution, verifies publicly, checks events and the rejected student's wallet. It sends no public-chain transactions. Screenshots: backend/cache/browser-*.png.
+Browser E2E uses Chromium, temporary MongoDB and Hardhat on port 18545. It publishes rules, processes two accounts, confirms as a student, issues as the institution, verifies publicly, checks events and the rejected student's wallet. It sends no public-chain transactions. Screenshots: backend/cache/connected-*-desktop.png and connected-*-mobile.png.
 
 API tests cover role separation, foreign institution rejection, raw near-ties, GPAX, duplicate publication/run/issuance retries, pinned rules, tampered records, 404/503 and mined capacity reverts.
 
