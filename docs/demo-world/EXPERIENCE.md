@@ -2,11 +2,11 @@
 
 ## Review the running experience
 
-Public replay: http://localhost:8082/demo
+Public replay: http://localhost:8080/demo
 
-Private local presenter UI: http://localhost:8083/university (institution sign-in required). Local demonstration login remains `demo-office` / `password`; never publish this local credential on a write-enabled external service.
+Authenticated local university UI: http://localhost:8080/university (institution sign-in required). Local demonstration login remains `demo-office` / `password`; never publish this local credential on a write-enabled external service.
 
-The existing applications on 8080 and 8081 were preserved. Demo World has its own chain (18548), database and volumes. Prepared Fuji wallets, scenario definition, circuit, contract ABI and V1 deployment were not changed. No Fuji funding, deployment, role grants or transactions occurred.
+The current app is consolidated on 8080. The older web containers and duplicate presenter frontend are stopped; their chain/database containers and volumes are preserved. Demo World has its own chain (18548), database and volumes. Prepared Fuji wallets, scenario definition, circuit, contract ABI and V1 deployment were not changed. No Fuji funding, deployment, role grants or transactions occurred.
 
 ## Completion status
 
@@ -48,12 +48,12 @@ docker compose -f compose.yaml -f compose.zk.yaml -f compose.demo.yaml --profile
 
 The second command prepares real local data once, using only local development accounts. It refuses all non-local chains, never loads the prepared Fuji secrets, and refuses to overwrite an existing evidence manifest. It generates random commitment salts/IDs; applicant data/outcomes remain the approved deterministic definition.
 
-After preparation, open http://localhost:8082/demo. Public API requests are GET-only; its server contains no signer wallets. The presenter API is on the private Docker network and its separate UI is loopback-only. Each backend rate-limits requests; the public proxy uses one trusted hop. The localhost Hardhat RPC is for development, not a publicly exposed blockchain service.
+After preparation, open http://localhost:8080/demo. Public API requests are GET-only; its server contains no signer wallets. Both APIs are private Docker services behind one loopback-only frontend. Nginx sends `/api/v1/demo/` to the keyless replay API and normal application requests to the authenticated presenter API. Demo visitors receive no session or institutional permission. Each backend rate-limits requests; the public proxy uses one trusted hop. The localhost Hardhat RPC is for development, not a publicly exposed blockchain service.
 
-For code updates, preserve the chain and Mongo services:
+For code updates, run `npm run local:refresh` from the repository root. It preserves the chain and Mongo services and executes:
 
 ```sh
-docker compose -f compose.yaml -f compose.zk.yaml -f compose.demo.yaml up -d --no-deps --build backend presenter web presenter-web
+docker compose -f compose.yaml -f compose.zk.yaml -f compose.demo.yaml up -d --no-deps --build backend presenter web
 ```
 
 Do not recreate a running Hardhat chain merely to refresh the frontend. Its memory is not persistent blockchain storage. A fresh chain must have its own matching database/deployment identity; never mix old receipts into a new run.

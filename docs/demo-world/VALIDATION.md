@@ -66,3 +66,7 @@ This validates a local V2 chain, not Avalanche Fuji. No V2 Fuji deployment, fund
 The score experiment is a genuine local circuit constraint check, not a newly submitted invalid blockchain proof. Eligibility/capacity experiments are historical eth_call executions against a separate real local fixture. They are not mined failed transactions. Historical RPC availability is required.
 
 Allocation remains an authority-run simulation. The circuit does not independently verify the entire matching, cohort completeness, real-world examination truth or student identity. Program associations and eligibility can remain public. Concurrent snapshot requests are coalesced and cached for 15 seconds; no production load benchmark, external presenter security deployment or TLS verification was performed.
+
+## Single-origin consolidation
+
+The active frontend was subsequently consolidated onto `http://localhost:8080`. `/demo` uses the keyless replay backend, while normal app routes use the existing authenticated presenter backend through Nginx. Duplicate web frontends on 8081/8082/8083 were stopped, with all chain/database containers retained. The following revalidation covers the consolidated setup: app and demo route HTTP responses; unchanged nine-student evidence; public demo POST rejection; unauthenticated institutional write rejection; successful local `demo-office/password` login and logout; frontend checks; and full Demo World browser journeys at all three widths.

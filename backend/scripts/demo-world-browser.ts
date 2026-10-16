@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
-const base=process.env.DEMO_WORLD_URL??'http://localhost:8082';
+const base=process.env.DEMO_WORLD_URL??'http://localhost:8080';
 if(!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(base))throw Error('Browser checks target the isolated local demo only');
 const api=await(await fetch(base+'/api/v1/demo/world')).json();assert.equal(api.state,'verified');assert.equal(api.mode,'local');
 const rpc=async(method:string)=>await(await fetch('http://127.0.0.1:18548',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params:[]})})).json();
