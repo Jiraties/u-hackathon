@@ -37,3 +37,13 @@ Private proof contains report and salt. The student may disclose it voluntarily;
 - Capacity enforcement covers this contract only. Institutions can act outside the protocol. Authorized roles can publish incorrect data; commitment makes changes detectable, not original errors impossible.
 
 Before handling real admissions data, add the official integration/authentication model, institutional key custody, independent contract/security review, identity verification and an agreed data protection/retention policy. Fuji deployment itself is functional without claiming those integrations exist.
+
+## Integrated browser boundaries
+
+Institutional sessions are distinct from student sessions and scoped to the configured institution/programs before server signing. A single configured institution maps to one issuer signer. Student sessions cannot call office/issuer operations, and institution sessions cannot read student wallet/proof APIs.
+
+Browser bearer sessions use sessionStorage with eight-hour server-enforced expiry and logout invalidation. They remain exposed to same-origin JavaScript/XSS; this is not an HttpOnly session or MFA implementation. Machine credentials and signing keys remain server-only.
+
+Full shared rulebooks use SHA-256 over canonical fairpass-rulebook-v1 fields. The intake key excludes version; changed publication cannot create another quota for the same institution/program/year/round. A durable simulation run claims each program intake before broadcasting result attestations. Run one writer replica per signer. Legacy integration/CLI protocols remain operational compatibility paths and are not the full-rulebook browser workflow.
+
+prepare-private-fuji.ts is an opt-in Fuji-only migration tool. It creates server-side key material (mode 600), funds new wallets with test AVAX, deploys a new registry and preserves the prior .env before activation. It must not be run without authorization for these side effects. Deployment/key generation is not a substitute for a professional audit or production key custody.

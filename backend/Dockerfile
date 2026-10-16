@@ -5,6 +5,7 @@ COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY backend/contracts ./contracts
 COPY backend/src ./src
+COPY backend/shared ./shared
 COPY backend/scripts ./scripts
 COPY backend/test ./test
 COPY backend/tsconfig.json backend/hardhat.config.ts ./

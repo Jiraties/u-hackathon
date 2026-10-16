@@ -119,3 +119,41 @@ RPC ล่ม → HTTP 503 `verification_unavailable`; chain อ่านได�
 Events query: `?fromBlock=100&toBlock=2099` สูงสุด 2000 blocks ต่อครั้ง default เริ่ม deployment block และ response มี `nextBlock` ให้ไล่จนครบ ผู้ใช้ต้องตามทุกหน้าเพื่อได้ประวัติทั้งหมด
 
 API ไม่ได้เขียน adapter ลง frontend เดิม ให้ทีม frontend เชื่อม endpoint และแปลง model อย่างชัดเจนภายหลัง frontend ports เดิมยังเป็น demo types และไม่ได้ตรงกับ API ทุก field
+
+## Browser integration: complete shared rulebooks
+
+One configured INSTITUTION_ID maps to one issuer signer. Institutional bearer sessions are separate from student sessions; machine tokens remain server/CLI credentials.
+
+- POST /v1/admin/operators (admin token): {operatorId,name,institutionId,password}.
+- POST /v1/auth/institution/login: {operatorId,password} → {token,expiresAt,institutionId,name}.
+- POST /v1/auth/institution/logout (institution session): invalidate session.
+- POST /v1/office/rulebooks/publish (institution session): complete AdmissionRulebook from backend/shared/domain.ts, with draft/preview status and null chainReference/publication. Returns program key, rules hash and registration/lock receipts. The intake key includes institution/program/year/round, excluding version. Changed rules in an existing intake return 409.
+- GET /v1/office/results (institution session): scoped results, confirmations and credentials.
+- POST /v1/office/simulations (institution session): {runId,programIds:bytes32[],applicants:[{id,scores:[{id,subject,label,score,maximum,provenance:"simulated-exam-provider"}],preferences:logicalProgramId[],qualifications:{curriculum:string}}]}. Requires existing students/locked rules. Maximum 100 applicants and 10 programs, same year/round. One run claims each intake; retries retain result IDs.
+- Existing issuer result issuance and credential lifecycle endpoints also accept institution sessions, with program scope checks. Machine-token compatibility is retained. Issuance returns its saved receipt where available; after a mined transaction/database-update loss, receipt may be null while chain state is recovered.
+
+Public program DTOs add rulebook, registration and lock (nullable for legacy records). rulesMatch uses SHA-256 for shared rulebooks and legacy Keccak otherwise. Event DTOs use event, transactionHash, blockNumber, logIndex and nullable nextBlock.
+
+Wallet DTOs add publication/issuance receipts and credential lifecycle. Simulator reports pin rulebook snapshots, private score records, qualifications and run ID. Public verification never returns these private fields.
+
+Shared ranking uses unrounded normalized weighted sums, stable summation and ascending applicant IDs for exact ties. Display scores round to two decimals. Result attestations retain salted Keccak fairpass-result-v1. The legacy CLI simulator remains a compatibility protocol; browser processing uses the shared full-rulebook engine.
+
+See [Live demo guide](../docs/live-demo-guide.md) for setup and tests.
+
+## Reference UI adaptation (English)
+
+These routes require an institution bearer session and return `Cache-Control: no-store`:
+
+| Route | Purpose |
+| --- | --- |
+| `GET /v1/office/workspace` | Institution-scoped rulebook drafts with `revision` and `updatedAt`. |
+| `POST /v1/office/rulebooks/drafts` | `{rule, expectedRevision}` → `{rule, revision}`. First save uses revision 0. Stale revisions and edits to published rulebooks return 409. |
+| `GET /v1/office/students` | Provisioned student `{id,name}` directory for this single-institution deployment; passwords and hashes are excluded. |
+| `GET /v1/office/simulations` | Up to 30 scoped run summaries and completion state. |
+| `GET /v1/office/simulations/:id` | Exact saved processing payload for retry/resume; private to the configured institution. |
+
+`INSTITUTION_NAME` defaults to `Example University`. It is a display label, not authenticated university affiliation. Program and verification DTOs include public program metadata. Wallet records include their assigned program metadata; subject scores remain private.
+
+Rulebooks support an optional `degree` string (1–200 nonblank characters). The degree is included in the canonical commitment only when supplied. Existing rulebooks without it retain their historical commitment. Nothing migrates existing records.
+
+The connected interface uses real authenticated confirmation and issuance queues. It never imports fixture confirmations as authorization. Public QR scanning remains unavailable; the code/link field is supported. `?preview=1` retains the original fictional frontend separately.

@@ -18,7 +18,8 @@
     "check": "tsc --noEmit",
     "test": "npm run compile && npm run build && node --import tsx --test test/*.test.ts",
     "reallocate": "node --import tsx scripts/reallocate.ts",
-    "verify": "node --import tsx scripts/verify.ts"
+    "verify": "node --import tsx scripts/verify.ts",
+    "provision:demo": "node --import tsx scripts/provision-demo.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0",
@@ -38,6 +39,7 @@
     "@types/supertest": "6.0.3",
     "hardhat": "3.19.0",
     "mongodb-memory-server": "11.3.0",
+    "playwright": "1.64.1",
     "solc": "0.8.28",
     "supertest": "7.1.4",
     "tsx": "4.20.6",

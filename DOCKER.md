@@ -175,3 +175,9 @@ Mongo ที่มากับ Compose เหมาะกับ demo ใน priv
 - เมื่อใช้ Fuji การ rebuild/restart containers ไม่ได้ล้างข้อมูลบน public chain จึงต้องรักษา Mongo และ salts/mappings ไว้ด้วย
 
 เอกสาร API: [backend/API.md](backend/API.md); trust boundaries: [backend/SECURITY.md](backend/SECURITY.md)
+
+## Integrated browser demo
+
+The default web routes now call the API. See [Live demo guide](docs/live-demo-guide.md) for account provisioning, institutional publication, student confirmation, issuance, browser tests and Fuji rehearsal. The original fixture preview is available with ?preview=1.
+
+For persistence checks, recreate only backend/web with --no-deps; rebuilding/recreating the ephemeral local chain can select a new deployment/database.

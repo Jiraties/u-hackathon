@@ -6,6 +6,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/package.json ./web/package.json
 RUN pnpm install --frozen-lockfile
 COPY web ./web
+COPY backend/shared ./backend/shared
 RUN pnpm run build:web
 
 FROM nginxinc/nginx-unprivileged:1.28-alpine AS runtime
