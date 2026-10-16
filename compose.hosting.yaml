@@ -1,0 +1,72 @@
+# Standalone public Fuji deployment: Caddy → web/Nginx → API → MongoDB Atlas.
+# Run with --env-file .env.hosting. Never combine with compose.yaml.
+name: fairpass-hosted
+services:
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST to your public hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL for certificate renewal notices}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/healthz]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: ./backend/.env
+    environment:
+      NODE_ENV: production
+      FAIRPASS_EXPECT_CHAIN_ID: '43113'
+      FAIRPASS_LOCAL: 'false'
+      FAIRPASS_LOAD_DEPLOYMENT: 'false'
+      HOST: 0.0.0.0
+      PORT: '3001'
+      CORS_ORIGIN: https://${PUBLIC_HOST:?Set PUBLIC_HOST}
+      # Exactly Caddy and Nginx; API has no published host port.
+      TRUST_PROXY_HOPS: '2'
+    healthcheck:
+      test: [CMD, node, docker/health.mjs, api]
+      interval: 15s
+      timeout: 12s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 150s
+    restart: unless-stopped
+  tools:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: tooling
+    env_file: ./backend/.env
+    environment:
+      FAIRPASS_EXPECT_CHAIN_ID: '43113'
+      FAIRPASS_LOCAL: 'false'
+      FAIRPASS_LOAD_DEPLOYMENT: 'false'
+      API_URL: http://backend:3001
+volumes:
+  caddy-data:
+  caddy-config:

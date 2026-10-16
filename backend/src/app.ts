@@ -31,6 +31,7 @@ const statuses = ['not_found', 'valid', 'valid', 'withdrawn', 'revoked'] as cons
 export function createApp(config: Config, store: Store, chain: ChainGateway) {
   const app = express();
   app.disable('x-powered-by');
+  if(config.TRUST_PROXY_HOPS) app.set('trust proxy',config.TRUST_PROXY_HOPS);
   app.use(helmet(), cors({ origin: config.CORS_ORIGIN }), express.json({ limit: '128kb' }));
   app.use(rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use('/v1/me', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -124,6 +125,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   app.post('/v1/office/rulebooks/drafts',office,async(req,res)=>{
     const input=z.object({rule:ruleSchema,expectedRevision:z.number().int().nonnegative()}).strict().parse(req.body);
     if(input.rule.institutionId!==res.locals.institutionId) fail(403,'program_outside_institution');
+    const output=await workflow(async()=>{
     const key=`${res.locals.institutionId}:${input.rule.id}`;
     const published=await store.programs.findOne({'rulebook.id':input.rule.id,institutionId:res.locals.institutionId});
     if(published) fail(409,'published_rulebook_immutable');
@@ -133,7 +135,9 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const result=await store.drafts.updateOne({_id:key,...(current?{revision:input.expectedRevision}:{revision:{$exists:false}})},
       {$set:{institutionId:res.locals.institutionId,rule:input.rule,revision,updatedAt:new Date()}},{upsert:!current});
     if(current && !result.modifiedCount) fail(409,'draft_revision_conflict');
-    res.json({rule:input.rule,revision});
+    return {rule:input.rule,revision};
+    });
+    res.json(output);
   });
   app.get('/v1/office/simulations/:id',office,async(req,res)=>{
     const run=await store.runs.findOne({_id:id.parse(req.params.id),institutionId:res.locals.institutionId});
@@ -155,6 +159,8 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const programId=rulesCommitment({scheme:'fairpass-intake-v1',institutionId:rule.institutionId,programId:rule.programId,academicYear:rule.academicYear,round:rule.round});
     const rulesHash=await rulebookCommitment(rule) as Hex;
     const output=await workflow(async()=>{
+      const draft=await store.drafts.findOne({_id:`${res.locals.institutionId}:${rule.id}`});
+      if(draft && await rulebookCommitment(draft.rule)!==rulesHash) fail(409,'draft_revision_conflict');
       let doc=await store.programs.findOne({_id:programId});
       if(doc && doc.rulesHash !== rulesHash) fail(409,'intake_already_published');
       if(!doc) {
@@ -330,7 +336,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       commitment: d.commitment, confirmationRequestedAt: d.confirmationRequestedAt ?? null,
       publication:d.publication ?? null, issuance:d.issuance ?? null,
       credential: await chain.read('credential', [d.credentialId]).then(c => c[1] ? { credentialId: d.credentialId, programId: c[0], status: statuses[c[1]], lifecycle:c[1] === 2 ? 'enrolled' : statuses[c[1]] } : null) })));
-    res.json({ student: { id: profile!._id, name: profile!.name }, records, ...chain.info });
+    res.json({ institutionName:config.INSTITUTION_NAME??'Example University', student: { id: profile!._id, name: profile!.name }, records, ...chain.info });
   });
   app.get('/v1/me/results/:id/proof', student, async (req, res) => {
     const doc = await resultForStudent(req, res);

@@ -332,8 +332,10 @@ test('browser: publish rules → process cohort → student confirmation → ins
   const errors:string[]=[];for(const page of [office,student])page.on('pageerror',error=>errors.push(error.message));
   const {browserJourney}=await import('../scripts/browser-journey.js');
   async function capture(page:import('playwright').Page,name:string){
+    await page.evaluate(()=>document.getAnimations().forEach(a=>a.finish()));
     await page.screenshot({path:path.resolve('cache/connected-'+name+'-desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>document.getAnimations().forEach(a=>a.finish()));
     await page.screenshot({path:path.resolve('cache/connected-'+name+'-mobile.png'),fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,name+' fits mobile');
     if(name==='wallet'||name==='non-admitted')assert.equal(await page.getByRole('link',{name:'Back to myTCAS',exact:false}).isVisible(),true);

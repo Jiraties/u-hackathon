@@ -187,3 +187,8 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
 Phase 1–2 ใช้ registry ที่ deploy อยู่แล้วสำหรับ read/student flows ได้ Phase 3 ต้องกำหนด protocol ให้ตรงกันก่อนเปิด publication/processing จาก Rulebook Builder และ Phase 4 ต้องมี institutional auth ก่อนเปิด browser issuance
 
 เอกสารเกี่ยวข้อง: [Backend API](../backend/API.md), [Docker deployment](../DOCKER.md), [Security boundaries](../backend/SECURITY.md)
+
+
+## Connected reference UI follow-up — 16 October 2026
+
+Default live UI now preserves the English digital-pass reference, with server drafts/revisions, ranked result traces, evaluated rulebook review, multi-program allocation, confirmed issuance and public capacity/events. Preview remains isolated under `?preview=1`. See [Reference/API mapping](reference-ui-api-map.md), [Platform flow](platform-flow.md), and [Hosting guide](hosting-guide.md). Public development-key custody limitation remains unresolved by the user’s chosen Fuji demo setup; this update does not mark that production requirement complete.
