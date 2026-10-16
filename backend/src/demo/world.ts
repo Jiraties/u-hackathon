@@ -31,7 +31,7 @@ export class DemoWorldService {
   private engine(){return this.prover??=ScoringProver.create();}
   snapshot():Promise<DemoWorldSnapshot>{
     if(this.cached&&this.cached.until>Date.now())return Promise.resolve(this.cached.value);
-    return this.inFlight??=(async()=>{try{const value=await this.build();this.cached={until:Date.now()+15000,value};return value;}finally{this.inFlight=undefined;}})();
+    return this.inFlight??=(async()=>{try{const value=await this.build();this.cached={until:Date.now()+(this.config.DEMO_READ_ONLY?300000:15000),value};return value;}finally{this.inFlight=undefined;}})();
   }
   private preparation(reason='Fuji V2 deployment awaits approval.',state:'not_prepared'|'unavailable'='not_prepared'):DemoWorldSnapshot{
     return {scenario:createDemoScenario(this.config.DEMO_WORLD_INSTANCE??'preparation'),state,reason,mode:'preparation' as const,observedAt:new Date().toISOString(),network:null,programs:[],students:[],dataset:null,manifest:null,securityAvailable:false};
@@ -131,13 +131,13 @@ export class DemoWorldService {
         catch(error){if(!(error instanceof Error)||!/(constraint|assertion)/i.test(error.message))throw error;return {kind:'circuit_constraint_check',outcome:'rejected',submittedTransaction:false,message:'Verification failed. The evidence doesn’t match.'};}
       }
       const m=this.validated!;const s=m.security!,fixture=kind==='eligibility'?s.ineligible:s.eligible;
-      const abi=artifact('FairPassRegistryV2').abi;const target=s.deployment.address as Address;const blockNumber=BigInt(fixture.blockNumber);
-      const read=(functionName:string,args:readonly unknown[])=>this.client.readContract({address:target,abi,functionName,args,blockNumber}) as Promise<any>;
-      const [program,confirmed,claim]=await Promise.all([read('programs',[s.programId]),read('isConfirmed',[fixture.resultId]),read('scoreClaims',[fixture.resultId,s.programId])]);
+      const abi=artifact('FairPassRegistryV2').abi;const target=s.deployment.address as Address;const current=s.callMode==='current';const blockNumber=current?undefined:BigInt(fixture.blockNumber);const programId=fixture.programId??s.programId;const at=current?{blockTag:'latest' as const}:{blockNumber:blockNumber!};
+      const read=(functionName:string,args:readonly unknown[])=>this.client.readContract({address:target,abi,functionName,args,...at}) as Promise<any>;
+      const [program,confirmed,claim]=await Promise.all([read('programs',[programId]),read('isConfirmed',[fixture.resultId]),read('scoreClaims',[fixture.resultId,programId])]);
       if(!confirmed||!claim[6]||(kind==='eligibility'&&(claim[5]||program[3]>=program[2]))||(kind==='capacity'&&(!claim[5]||program[3]<program[2])))fail('Security experiment preconditions mismatch');
-      try{await this.client.simulateContract({address:target,abi,functionName:'issueRight',args:[fixture.credentialId,fixture.resultId],account:m.roles!.issuer as Address,blockNumber});fail('Contract unexpectedly accepted the operation');}
+      try{await this.client.simulateContract({address:target,abi,functionName:'issueRight',args:[fixture.credentialId,fixture.resultId],account:m.roles!.issuer as Address,...at});fail('Contract unexpectedly accepted the operation');}
       catch(error){const reverted=(error as {walk?:(fn:(e:unknown)=>boolean)=>unknown}).walk?.(e=>e instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError|undefined;if(reverted?.data?.errorName!==fixture.expectedError)throw error;
-        return {kind:'historical_contract_call',outcome:'rejected',submittedTransaction:false,error:fixture.expectedError,contractAddress:target,blockNumber:fixture.blockNumber,message:kind==='eligibility'?'The enforced eligibility rule blocked issuance.':'Both places are occupied. The contract blocked a third right.'};}
+        return {kind:current?'current_contract_call':'historical_contract_call',outcome:'rejected',submittedTransaction:false,error:fixture.expectedError,contractAddress:target,blockNumber:current?String(await this.client.getBlockNumber({cacheTime:0})):fixture.blockNumber,message:kind==='eligibility'?'The enforced eligibility rule blocked issuance.':'Both places are occupied. The contract blocked a third right.'};}
     });this.experimentTail=task.catch(()=>undefined);return task;
   }
 }

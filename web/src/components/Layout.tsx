@@ -53,6 +53,7 @@ export const Layout = ({
           ))}
         </nav>
         <div className="header-end">
+          <a className="institution-link" href="/demo">Demo World <Icon name="arrow" size={16} /></a>
           {/* {page === "wallet" ? (
             <a className="mytcas-header-link" href="https://www.mytcas.com/">
               Back to myTCAS <Icon name="external" size={14} />

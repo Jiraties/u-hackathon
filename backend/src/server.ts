@@ -14,6 +14,6 @@ await ensureLocalDemoAccounts(store, {
   password: process.env.DEMO_PASSWORD, institutionId: config.INSTITUTION_ID,
 });
 const app = createApp(config, store, chain);
-const host = config.WEB_DIST_DIR ? createWebHost(app, config.WEB_DIST_DIR) : app;
+const host = config.WEB_DIST_DIR ? createWebHost(app, config.WEB_DIST_DIR, config.DEMO_REPLAY_API_URL) : app;
 const server = host.listen(config.PORT, config.HOST, () => console.log(`FairPass API listening on ${config.HOST}:${config.PORT} (chain ${config.CHAIN_ID})`));
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { server.close(() => { void app.locals.closeScoring().then(close).then(() => process.exit(0)); }); });

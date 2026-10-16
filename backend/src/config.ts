@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { z } from 'zod';
 const key = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const schema = z.object({
+  MAX_FEE_PER_GAS_WEI: z.coerce.bigint().positive().optional(),
+  DEMO_REPLAY_API_URL: z.url().optional(),
   WEB_DIST_DIR: z.string().min(1).optional(),
   HOST: z.enum(['127.0.0.1', '0.0.0.0']).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),

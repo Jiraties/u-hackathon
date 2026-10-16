@@ -30,3 +30,21 @@ test('production host serves SPA routes, preserves API responses and security he
     assert.throws(()=>createWebHost(api,path.join(root,'missing')),/index.html is missing/);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 });
+
+
+test('demo proxy uses keyless upstream and never forwards institution credentials or writes', async () => {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'fairpass-proxy-'));
+  const replay=express();
+  replay.get('/v1/demo/world', (req,res)=>res.json({query:req.query,authorization:req.headers.authorization??null,cookie:req.headers.cookie??null}));
+  const listener=replay.listen(0,'127.0.0.1');
+  await new Promise<void>(resolve=>listener.once('listening',resolve));
+  try {
+    fs.writeFileSync(path.join(root,'index.html'), '<!doctype html><title>FairPass</title>');
+    const api=express();api.get('/ready',(_req,res)=>res.json({ready:true}));
+    const port=(listener.address() as import('node:net').AddressInfo).port;
+    const host=createWebHost(api,root,`http://127.0.0.1:${port}`);
+    await request(host).get('/api/v1/demo/world?student=Pim').set('Authorization','Bearer private-institution-session').set('Cookie','private-cookie=1').expect(200,{query:{student:'Pim'},authorization:null,cookie:null});
+    await request(host).post('/api/v1/demo/world').expect(403,{error:'read_only_replay'});
+    await request(host).get('/api/ready').expect(200,{ready:true});
+  } finally {listener.close();fs.rmSync(root,{recursive:true,force:true});}
+});
