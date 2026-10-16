@@ -280,3 +280,76 @@ Before finishing a visual change, check the relevant desktop layout, hierarchy,
 readability, action states, and demo labels. Report verification accurately; do not
 claim browser validation that did not happen. Documentation-only changes do not
 need application tests.
+
+## Connected UI implementation — 16 October 2026
+
+This addendum records the connected implementation in `web/src/LiveApp.tsx`,
+`web/src/components/Layout.tsx`, `web/src/components/ShareTokenButton.tsx`, and
+`web/src/style.css`. The approved digital-pass direction above remains the visual
+baseline. This is an implementation record, not a replacement design system.
+
+### Scope and language
+
+- Default routes render the connected UI and request `/api/v1`; `?preview=1`
+  explicitly selects the original local fixtures. An unavailable API does not
+  substitute preview records.
+- Earlier guidance about disabled live publication/issuance, local-only sharing,
+  demo switching, and preparing a local rulebook preview describes `?preview=1`.
+  The connected university flow performs authorized API operations and reports
+  their returned state. The fictional admissions context remains visible in both.
+- The connected interface is English, with document language `en`. Retain English
+  labels, explanations, and context while keeping university/program names as
+  record data. Copy uses short sentences and familiar words suitable for Grade 12
+  students; technical payloads and chain identifiers remain secondary disclosures.
+
+### Preserved visual system and mobile adaptation
+
+- Reuse DM Sans, primary blue (`#0075c9`), navy (`#15324d`), the admission-pass
+  body (`#1468da`) and network strip (`#0959c3`), rounded passes, quiet surfaces,
+  and the established top navigation. No new token vocabulary or theme is added.
+- Connected layout changes are scoped by `body.connected-view` in the existing
+  stylesheet. The connected experience now includes phone adaptation, including
+  390px layouts; the earlier desktop-only scope does not limit this requested work.
+  At the existing 1000px and 640px breakpoints, navigation wraps, content grids
+  collapse, verification controls stack, and dialogs fit the viewport.
+- Preserve **View token → Verify → Share** on the admitted pass, including compact
+  phone controls. **Back to myTCAS** stays in wallet navigation beside **For
+  universities**, for admitted and non-admitted students.
+
+### Connected component behavior
+
+- An issued admitted wallet keeps its pass first. A native, initially closed
+  **Scores and admission result** disclosure holds private scores and calculation
+  traces below it. Unsuccessful applicants see their result and explanation, with
+  no admission-right token. An offer awaiting issuance remains a separate state.
+- Ranked program cards select one calculation trace. Its sequence is **Scores →
+  Formula → Calculated score → Eligibility → Reported admission outcome**.
+  Preference order comes from the report trace; missing order is labeled
+  unavailable. The displayed outcome is explicitly the overall round result, not
+  a claim that the selected calculation establishes why a seat was assigned.
+- The four-step university builder retains **Program details → Scoring rules →
+  Eligibility → Review rulebook**. Review includes editable fictional score and
+  curriculum inputs evaluated by the shared `evaluateRulebook` implementation.
+  Draft saves use an expected revision; publication locks one rulebook version
+  for an intake. Changed locked rules require another intake in this implementation.
+- Connected sharing opens the existing dialog with a public verification link,
+  copy feedback, and an identity limitation. Names and scores remain private.
+
+### API and evidence truth
+
+- Private student and institution actions require API sessions. Machine credentials
+  and signing keys stay outside the browser. Transaction progress, failures, and
+  returned receipts must remain distinct from successful chain verification.
+- Result integrity, score authenticity, and allocation correctness remain separate
+  checks. A matching commitment does not authenticate scores or verify allocation
+  fairness; this connected demo does not establish those latter guarantees.
+- The chosen Fuji demo retains its existing registry and public development keys;
+  registry/key migration was declined. Contract state is not proof that a real
+  university signed a record. Keep fictional-record and no-affiliation context.
+
+Desktop and phone review captures are stored under
+`backend/cache/connected-*-desktop.png` and `backend/cache/connected-*-mobile.png`,
+including wallet, non-admitted result, sign-in, verification, transparency,
+university console, builder, and builder review. These captures document the
+connected surfaces; they do not establish production readiness or admissions
+fairness. Runtime/setup details remain in `docs/live-demo-guide.md`.

@@ -13,6 +13,7 @@ const schema = z.object({
   ADMIN_API_TOKEN: z.string().min(32), INTEGRATION_API_TOKEN: z.string().min(32), ISSUER_API_TOKEN: z.string().min(32),
   INSTITUTION_NAME: z.string().min(1).max(200).default('Example University'),
   INSTITUTION_ID: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/).default('fairpass-demo'),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(2).default(0),
   CORS_ORIGIN: z.url().default('http://localhost:5173'),
 });
 export type Config = z.infer<typeof schema>;

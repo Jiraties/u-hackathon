@@ -118,7 +118,7 @@ RPC ล่ม → HTTP 503 `verification_unavailable`; chain อ่านได�
 
 Events query: `?fromBlock=100&toBlock=2099` สูงสุด 2000 blocks ต่อครั้ง default เริ่ม deployment block และ response มี `nextBlock` ให้ไล่จนครบ ผู้ใช้ต้องตามทุกหน้าเพื่อได้ประวัติทั้งหมด
 
-API ไม่ได้เขียน adapter ลง frontend เดิม ให้ทีม frontend เชื่อม endpoint และแปลง model อย่างชัดเจนภายหลัง frontend ports เดิมยังเป็น demo types และไม่ได้ตรงกับ API ทุก field
+Connected frontend อยู่ใน `web/src/LiveApp.tsx` และใช้ DTO จาก `web/src/services/api.ts` แยกจาก preview ports เดิม; ดู `docs/reference-ui-api-map.md` สำหรับ mapping แต่ละฟังก์ชัน
 
 ## Browser integration: complete shared rulebooks
 
