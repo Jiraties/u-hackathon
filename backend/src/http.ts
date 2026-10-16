@@ -20,8 +20,9 @@ export const createWebHost = (api: Express, directory: string, replayUrl?: strin
     host.use('/api/v1/demo', async (req, res) => {
       if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) { res.status(403).json({error:'read_only_replay'}); return; }
       try {
-        const target = new URL('/v1/demo' + req.url, upstream);
-        if (!target.pathname.startsWith('/v1/demo/')) { res.sendStatus(404); return; }
+        // The private replay runs the production host, which mounts its API at /api.
+        const target = new URL('/api/v1/demo' + req.url, upstream);
+        if (!target.pathname.startsWith('/api/v1/demo/')) { res.sendStatus(404); return; }
         // Public replay never inherits a browser's institutional session or credentials.
         const response = await fetch(target, {method:req.method,headers:{Accept:'application/json'},signal:AbortSignal.timeout(120000)});
         res.status(response.status);

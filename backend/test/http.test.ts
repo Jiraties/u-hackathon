@@ -32,10 +32,14 @@ test('production host serves SPA routes, preserves API responses and security he
 });
 
 
-test('demo proxy uses keyless upstream and never forwards institution credentials or writes', async () => {
+test('demo proxy reaches the production replay host without forwarding institution credentials or writes', async () => {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'fairpass-proxy-'));
-  const replay=express();
-  replay.get('/v1/demo/world', (req,res)=>res.json({query:req.query,authorization:req.headers.authorization??null,cookie:req.headers.cookie??null}));
+  fs.writeFileSync(path.join(root,'index.html'), '<!doctype html><title>FairPass</title>');
+  const replayApi=express();
+  replayApi.get('/v1/demo/world', (req,res)=>res.json({query:req.query,authorization:req.headers.authorization??null,cookie:req.headers.cookie??null}));
+  replayApi.use((_req,res)=>res.status(404).json({error:'not_found'}));
+  // Railway runs the same production host: API routes live below /api.
+  const replay=createWebHost(replayApi,root);
   const listener=replay.listen(0,'127.0.0.1');
   await new Promise<void>(resolve=>listener.once('listening',resolve));
   try {
