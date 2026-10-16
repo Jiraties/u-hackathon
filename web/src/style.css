@@ -933,3 +933,31 @@ body.connected-view { min-width:0; }
 .result-proof-integrity { display:flex; align-items:center; gap:8px; padding:15px 4px 5px; color:var(--muted); font-size:12px; background:transparent; border:0; }
 .result-proof-integrity:hover { color:var(--blue); }
 .result-proof-dialog .scoring-evidence-card { margin-top:20px; }
+
+/* Institution operations keep the percentage rule editor unchanged. */
+.connected-view .office-intake-context { display:flex; flex-wrap:wrap; gap:10px 24px; align-items:center; padding:18px 0; margin:14px 0; border-block:1px solid var(--line); }
+.connected-view .office-intake-context span { color:var(--muted); }
+.connected-view .office-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px 22px; margin:20px 0; }
+.connected-view .office-toolbar .live-field { flex:1 1 190px; margin:0; }
+.connected-view .office-table-scroll { overflow-x:auto; margin:24px 0; }
+.connected-view .office-table { width:100%; border-collapse:collapse; text-align:left; }
+.connected-view .office-table th,.connected-view .office-table td { padding:16px 12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
+.connected-view .office-table thead { background:var(--surface); }
+.connected-view .office-table th[scope=row] { overflow-wrap:anywhere; }
+.connected-view .office-table input[type=checkbox] { width:20px; height:20px; }
+.connected-view .office-table small { display:block; color:var(--muted); margin-top:6px; }
+.connected-view .office-table td:last-child { min-width:200px; max-width:370px; }
+.connected-view .office-import { margin:24px 0; padding:24px 0; border-block:1px solid var(--line); }
+.connected-view .office-import summary { font-weight:600; font-size:18px; }
+.connected-view .office-import>p,.connected-view .office-import>.button { margin-top:16px; }
+.connected-view .office-import textarea { width:100%; font:inherit; color:var(--navy); border:1px solid #c8d6e4; border-radius:8px; padding:14px; resize:vertical; }
+.connected-view .office-import li { margin:8px 0; }
+.connected-view .office-issuance-review,.connected-view .office-draft-recovery { margin:24px 0; padding:24px; background:var(--surface); border-radius:12px; }
+.connected-view .office-record-management { margin-top:36px; padding-top:24px; border-top:1px solid var(--line); }
+.connected-view .office-empty { padding:24px 0; }
+@media(max-width:640px){
+ .connected-view .office-toolbar { align-items:stretch; }
+ .connected-view .office-table { min-width:690px; }
+ .connected-view .office-issuance-review { padding:20px; }
+ .connected-view .office-import textarea { font-size:16px; }
+}

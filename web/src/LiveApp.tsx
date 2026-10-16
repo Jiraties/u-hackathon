@@ -1,9 +1,20 @@
+import {
+  recoveredDrafts,
+  rememberDraft,
+  forgetDraft,
+} from "./office/draftRecovery";
+import { IssuanceWorkspace } from "./office/IssuanceWorkspace";
+import { CohortImport } from "./office/CohortImport";
 import { ResultProofSummary } from "./components/ResultProofSummary";
 import { ScoringEvidenceCard } from "./components/ScoringEvidenceCard";
 import toast from "react-hot-toast";
 import { RulePublicationReview } from "./components/RulePublicationReview";
 import { replaceRoute } from "./router";
-import { RuleWeightComposition, RuleScoringEditor, RuleEligibilityEditor } from "./components/RuleEditors";
+import {
+  RuleWeightComposition,
+  RuleScoringEditor,
+  RuleEligibilityEditor,
+} from "./components/RuleEditors";
 import {
   useEffect,
   useState,
@@ -48,7 +59,13 @@ function useSession(role: "student" | "institution", enabled = true) {
       const saved = JSON.parse(
         localStorage.getItem(key) ?? sessionStorage.getItem(key) ?? "null",
       ) as Session | null;
-      if (!saved || !saved.token || !Number.isFinite(Date.parse(saved.expiresAt)) || Date.parse(saved.expiresAt) <= Date.now()) return null;
+      if (
+        !saved ||
+        !saved.token ||
+        !Number.isFinite(Date.parse(saved.expiresAt)) ||
+        Date.parse(saved.expiresAt) <= Date.now()
+      )
+        return null;
       localStorage.setItem(key, JSON.stringify(saved));
       sessionStorage.removeItem(key);
       return saved;
@@ -71,15 +88,30 @@ function useSession(role: "student" | "institution", enabled = true) {
     if (!enabled) return;
     const sync = () => {
       try {
-        const saved = JSON.parse(localStorage.getItem(key) ?? "null") as Session | null;
-        setSession(saved?.token && Date.parse(saved.expiresAt) > Date.now() ? saved : null);
-      } catch { setSession(null); }
+        const saved = JSON.parse(
+          localStorage.getItem(key) ?? "null",
+        ) as Session | null;
+        setSession(
+          saved?.token && Date.parse(saved.expiresAt) > Date.now()
+            ? saved
+            : null,
+        );
+      } catch {
+        setSession(null);
+      }
     };
-    const storage = (event: StorageEvent) => { if (event.key === key || event.key === null) sync(); };
-    const wake = () => { if (session && Date.parse(session.expiresAt) <= Date.now()) save(null); };
+    const storage = (event: StorageEvent) => {
+      if (event.key === key || event.key === null) sync();
+    };
+    const wake = () => {
+      if (session && Date.parse(session.expiresAt) <= Date.now()) save(null);
+    };
     window.addEventListener("storage", storage);
     window.addEventListener("focus", wake);
-    return () => { window.removeEventListener("storage", storage); window.removeEventListener("focus", wake); };
+    return () => {
+      window.removeEventListener("storage", storage);
+      window.removeEventListener("focus", wake);
+    };
   }, [key, session, enabled]);
   useEffect(() => {
     if (!session) return;
@@ -97,13 +129,19 @@ function useSession(role: "student" | "institution", enabled = true) {
 function useRequest() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const run = async (work: () => Promise<void>, feedback?: { loading: string; success: string }) => {
+  const run = async (
+    work: () => Promise<void>,
+    feedback?: { loading: string; success: string },
+  ) => {
     setBusy(true);
     setError("");
     try {
-      if (feedback) await toast.promise(Promise.resolve().then(work), {
-        loading: feedback.loading, success: feedback.success, error: errorMessage,
-      });
+      if (feedback)
+        await toast.promise(Promise.resolve().then(work), {
+          loading: feedback.loading,
+          success: feedback.success,
+          error: errorMessage,
+        });
       else await work();
     } catch (e) {
       setError(errorMessage(e));
@@ -273,7 +311,11 @@ function SignIn({
     </section>
   );
 }
-export type ReplayWallet = { wallet: Wallet; proof: Proof; loadProof: () => Promise<Proof> };
+export type ReplayWallet = {
+  wallet: Wallet;
+  proof: Proof;
+  loadProof: () => Promise<Proof>;
+};
 export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
   const { session, save } = useSession("student", !replay);
   const [wallet, setWallet] = useState<Wallet | null>(replay?.wallet ?? null),
@@ -294,7 +336,11 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
   };
   useEffect(() => {
     let active = true;
-    if (replay) {setWallet(replay.wallet);setProof(replay.proof);return;}
+    if (replay) {
+      setWallet(replay.wallet);
+      setProof(replay.proof);
+      return;
+    }
     if (session)
       void api<Wallet>("/me/wallet", { token: session?.token })
         .then((w) => {
@@ -322,24 +368,38 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
   const resultId = record?.resultId;
   useEffect(() => {
     let active = true;
-    if (replay) {setProof(replay.proof);return;}
+    if (replay) {
+      setProof(replay.proof);
+      return;
+    }
     setProof(null);
     if (session && resultId) {
-      void api<Proof>(`/me/results/${resultId}/proof`, { token: session?.token })
-        .then((evidence) => { if (active) setProof(evidence); })
-        .catch(() => { if (active) setProof(null); });
+      void api<Proof>(`/me/results/${resultId}/proof`, {
+        token: session?.token,
+      })
+        .then((evidence) => {
+          if (active) setProof(evidence);
+        })
+        .catch(() => {
+          if (active) setProof(null);
+        });
     }
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [session?.token, resultId, record?.commitment, replay]);
   if (!session && !replay) return <SignIn role="student" onLogin={save} />;
-  const resultVerified = proof?.resultId === resultId && proof?.verification.resultIntegrity === "verified";
+  const resultVerified =
+    proof?.resultId === resultId &&
+    proof?.verification.resultIntegrity === "verified";
   const credential =
     record?.report.outcome === "admitted" ? record.credential : null;
   const rules = record?.report.rulebooks ?? [];
   const program =
     rules.find((r) => r.id === record?.program?.rulebookId) ??
     (rules.length === 1 ? rules[0] : undefined);
-  const displayName = (name: string) => replay ? name.replace(/ · Fictional program$/, "") : name;
+  const displayName = (name: string) =>
+    replay ? name.replace(/ · Fictional program$/, "") : name;
   const name = wallet?.student.name ?? session?.name ?? "";
   const rankedRules =
     record?.report.trace
@@ -351,9 +411,11 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
   const check = () =>
     void run(async () => {
       setProof(
-        replay ? await replay.loadProof() : await api<Proof>(`/me/results/${record!.resultId}/proof`, {
-          token: session?.token,
-        }),
+        replay
+          ? await replay.loadProof()
+          : await api<Proof>(`/me/results/${record!.resultId}/proof`, {
+              token: session?.token,
+            }),
       );
       proofDialog.current?.showModal();
     });
@@ -427,18 +489,24 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
         <div>
           <div className="result-verification-heading">
             <h2>Follow your result</h2>
-              <button
-                type="button"
-                className={`evidence-badge result-verification-badge${resultVerified ? " on-chain" : ""}`}
-                disabled={busy}
-                onClick={check}
-                aria-label="View result verification and blockchain details"
-                aria-haspopup="dialog"
-              >
-                <span className="evidence-badge-symbol"><Icon name={resultVerified ? "check" : "file"} size={12} /></span>
-                {resultVerified ? (replay ? "Record matched" : "Verified") : "View proof"}
-                <Icon name="chevron" size={12} />
-              </button>
+            <button
+              type="button"
+              className={`evidence-badge result-verification-badge${resultVerified ? " on-chain" : ""}`}
+              disabled={busy}
+              onClick={check}
+              aria-label="View result verification and blockchain details"
+              aria-haspopup="dialog"
+            >
+              <span className="evidence-badge-symbol">
+                <Icon name={resultVerified ? "check" : "file"} size={12} />
+              </span>
+              {resultVerified
+                ? replay
+                  ? "Record matched"
+                  : "Verified"
+                : "View proof"}
+              <Icon name="chevron" size={12} />
+            </button>
           </div>
           <p>Your scores and the rulebook versions used for this round.</p>
         </div>
@@ -494,8 +562,16 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
           {orderedRules
             .filter((r) => r.id === chosenRule?.id)
             .map((rule) => {
-              const preferenceIndex = record.report.trace?.findIndex(t => t.programId === rule.programId) ?? -1;
-              const authenticatedScore = record.scoring?.find(e => e.programId === record.report.preferences?.[preferenceIndex])?.status === "verified";
+              const preferenceIndex =
+                record.report.trace?.findIndex(
+                  (t) => t.programId === rule.programId,
+                ) ?? -1;
+              const authenticatedScore =
+                record.scoring?.find(
+                  (e) =>
+                    e.programId ===
+                    record.report.preferences?.[preferenceIndex],
+                )?.status === "verified";
               const scores = record.report.scoreRecords;
               const calculation = scores
                 ? evaluateRulebook(
@@ -537,7 +613,9 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
                           ))}
                         </div>
                         <p className="fine-print">
-                          {authenticatedScore ? "Authenticated by examination authority" : "Score authenticity not verified"}
+                          {authenticatedScore
+                            ? "Matches authorized exam dataset"
+                            : "Score authenticity not verified"}
                         </p>
                       </div>
                     </div>
@@ -645,10 +723,43 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
       >
         Check result integrity
       </button>
-      {replay ? <details className="demo-scoring-details"><summary>View program scoring proofs</summary>{record.scoring?.map(evidence=><ScoringEvidenceCard key={evidence.programId} evidence={evidence}/>)}</details> : record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={replay ? undefined : () => void run(async () => {
-        await api(`/me/results/${record.resultId}/scoring`, {method:"POST",token:session?.token,body:{programId:evidence.programId}});
-        await refresh();
-      }, {loading:"Generating a private proof and waiting for blockchain verification…",success:"Private scoring proof verified by the smart contract."})}/>)}
+      {replay ? (
+        <details className="demo-scoring-details">
+          <summary>View program scoring proofs</summary>
+          {record.scoring?.map((evidence) => (
+            <ScoringEvidenceCard key={evidence.programId} evidence={evidence} />
+          ))}
+        </details>
+      ) : (
+        record.scoring?.map((evidence) => (
+          <ScoringEvidenceCard
+            key={evidence.programId}
+            evidence={evidence}
+            busy={busy}
+            onVerify={
+              replay
+                ? undefined
+                : () =>
+                    void run(
+                      async () => {
+                        await api(`/me/results/${record.resultId}/scoring`, {
+                          method: "POST",
+                          token: session?.token,
+                          body: { programId: evidence.programId },
+                        });
+                        await refresh();
+                      },
+                      {
+                        loading:
+                          "Generating a private proof and waiting for blockchain verification…",
+                        success:
+                          "Private scoring proof verified by the smart contract.",
+                      },
+                    )
+            }
+          />
+        ))
+      )}
       <Json value={record.report} label="Private report details" />
     </section>
   ) : null;
@@ -659,24 +770,26 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
           Hi, {name}
           <span className="welcome-dot">.</span>
         </span>
-        {!replay ? <button
-          className="text-button"
-          disabled={busy}
-          onClick={() =>
-            void run(async () => {
-              try {
-                await api("/auth/logout", {
-                  method: "POST",
-                  token: session?.token,
-                });
-              } finally {
-                save(null);
-              }
-            })
-          }
-        >
-          Sign out
-        </button> : null}
+        {!replay ? (
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                try {
+                  await api("/auth/logout", {
+                    method: "POST",
+                    token: session?.token,
+                  });
+                } finally {
+                  save(null);
+                }
+              })
+            }
+          >
+            Sign out
+          </button>
+        ) : null}
       </div>
       <div className="wallet-heading">
         <h1>
@@ -769,11 +882,36 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
                 : "Not admitted"}
             </h2>
             <p className="result-card-round">{record.report.round}</p>
+            {record.report.outcome === "admitted" &&
+            !replay &&
+            !record.confirmationRequestedAt ? (
+              <p className="fine-print">
+                Accept this offer within FairPass. This does not confirm your
+                place in myTCAS.
+              </p>
+            ) : null}
             {record.report.outcome === "admitted" && !replay ? (
               record.confirmationRequestedAt ? (
-                <p role="status">
-                  Confirmation requested. Waiting for institution issuance.
-                </p>
+                <div>
+                  <p role="status">
+                    Offer accepted in FairPass. Your university will complete
+                    the next steps.
+                  </p>
+                  <p className="fine-print">
+                    Accepted{" "}
+                    {new Date(record.confirmationRequestedAt).toLocaleString(
+                      "en-GB",
+                    )}
+                    . This does not confirm your place in myTCAS.
+                  </p>
+                  <button
+                    className="button button-secondary"
+                    disabled={busy}
+                    onClick={() => void run(refresh)}
+                  >
+                    Refresh admission status
+                  </button>
+                </div>
               ) : (
                 <button
                   disabled={busy}
@@ -781,24 +919,30 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
                   onClick={() => {
                     if (
                       confirm(
-                        "Confirm admission? The institution will issue your admission token separately.",
+                        "Accept this offer in FairPass? This records your response to the institution. It does not confirm your place in myTCAS. The institution issues the admission record separately.",
                       )
                     )
-                      void run(async () => {
-                        await api(`/me/results/${record.resultId}/confirm`, {
-                          method: "POST",
-                          token: session?.token,
-                        });
-                        await refresh();
-                      }, { loading: "Submitting your confirmation…", success: "Confirmation submitted. Your university can now issue your admission token." });
+                      void run(
+                        async () => {
+                          await api(`/me/results/${record.resultId}/confirm`, {
+                            method: "POST",
+                            token: session?.token,
+                          });
+                          await refresh();
+                        },
+                        {
+                          loading: "Recording your acceptance…",
+                          success: "Offer acceptance saved.",
+                        },
+                      );
                   }}
                 >
-                  Request confirmation
+                  Accept offer in FairPass
                 </button>
               )
             ) : (
               <a className="button button-primary" href="#result-trace">
-                See why <Icon name="arrow" size={18} />
+                Review scores and rules <Icon name="arrow" size={18} />
               </a>
             )}
             <div className="result-card-foot">
@@ -817,20 +961,30 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
               resultVerified={resultVerified}
               busy={busy}
               onCheckIntegrity={check}
-              loadEvidence={() => replay ? replay.loadProof() : api<Proof>(`/me/results/${record.resultId}/proof`, { token: session?.token })}
+              loadEvidence={() =>
+                replay
+                  ? replay.loadProof()
+                  : api<Proof>(`/me/results/${record.resultId}/proof`, {
+                      token: session?.token,
+                    })
+              }
             />
-          ) : <aside className="wallet-story">
-            <h2>Your result record</h2>
-            <p>An offer and an issued admission token are separate records.</p>
-            <button
-              className="button button-secondary"
-              disabled={busy}
-              onClick={check}
-            >
-              Check result integrity
-            </button>
-            {!replay ? <ConnectedGuide /> : null}
-          </aside>}
+          ) : (
+            <aside className="wallet-story">
+              <h2>Your result record</h2>
+              <p>
+                An offer and an issued admission token are separate records.
+              </p>
+              <button
+                className="button button-secondary"
+                disabled={busy}
+                onClick={check}
+              >
+                Check result integrity
+              </button>
+              {!replay ? <ConnectedGuide /> : null}
+            </aside>
+          )}
         </div>
       ) : wallet ? (
         <section className="quiet-empty">
@@ -895,27 +1049,55 @@ export function StudentWallet({ replay }: { replay?: ReplayWallet } = {}) {
           </button>
         </form>
         <h2 id="live-proof-title">
-          {proof?.verification.resultIntegrity === "verified" ? "Your result record is verified" : "Result verification"}
+          {proof?.verification.resultIntegrity === "verified"
+            ? "Your result record is verified"
+            : "Result verification"}
         </h2>
         <p>
           {proof?.verification.resultIntegrity === "verified"
             ? "Your result matches the fingerprint recorded on the blockchain. The recorded fingerprint cannot be changed."
             : "We could not confirm that this result matches a recorded blockchain fingerprint."}
         </p>
-        {proof ? <>
-          <dl className="detail-list">
-            <div><dt>Network</dt><dd>{networkName(proof.chainId)}</dd></div>
-            <div><dt>Recorded</dt><dd>{Number(proof.recordedAt) > 0 ? new Date(Number(proof.recordedAt) * 1000).toLocaleString() : "Not recorded"}</dd></div>
-            <div><dt>Contract</dt><dd className="live-id">{proof.contractAddress}</dd></div>
-            <div><dt>Result fingerprint</dt><dd className="live-id">{proof.onchainCommitment}</dd></div>
-          </dl>
-          <ReceiptView value={proof.publication} />
-        </> : null}
-        <p>Your identity, scores and preferences stay private. This check confirms the result record; it does not independently verify the allocation.</p>
+        {proof ? (
+          <>
+            <dl className="detail-list">
+              <div>
+                <dt>Network</dt>
+                <dd>{networkName(proof.chainId)}</dd>
+              </div>
+              <div>
+                <dt>Recorded</dt>
+                <dd>
+                  {Number(proof.recordedAt) > 0
+                    ? new Date(Number(proof.recordedAt) * 1000).toLocaleString()
+                    : "Not recorded"}
+                </dd>
+              </div>
+              <div>
+                <dt>Contract</dt>
+                <dd className="live-id">{proof.contractAddress}</dd>
+              </div>
+              <div>
+                <dt>Result fingerprint</dt>
+                <dd className="live-id">{proof.onchainCommitment}</dd>
+              </div>
+            </dl>
+            <ReceiptView value={proof.publication} />
+          </>
+        ) : null}
+        <p>
+          Your identity, scores and preferences stay private. This check
+          confirms the result record; it does not independently verify the
+          allocation.
+        </p>
         <dl className="detail-list">
           <div>
             <dt>Score authenticity</dt>
-            <dd>{proof?.verification.scoreAuthenticity === "verified" ? "Verified against authorized dataset" : "Not verified"}</dd>
+            <dd>
+              {proof?.verification.scoreAuthenticity === "verified"
+                ? "Verified against authorized dataset"
+                : "Not verified"}
+            </dd>
           </div>
           <div>
             <dt>Allocation correctness</dt>
@@ -1376,9 +1558,13 @@ const defaultRule = (zkEnabled = false): AdmissionRulebook => ({
   capacity: 1,
   version: 1,
   method: "normalized-weighted-sum",
-  components: zkEnabled ? ["tgat","math1","physics"].map((id,index)=>({...examComponents.find(c=>c.scoreId===id)!,weightPercent:index===0?20:40,minimumPercent:50})) : [
-    { ...examComponents[0], weightPercent: 100, minimumPercent: null },
-  ],
+  components: zkEnabled
+    ? ["tgat", "math1", "physics"].map((id, index) => ({
+        ...examComponents.find((c) => c.scoreId === id)!,
+        weightPercent: index === 0 ? 20 : 40,
+        minimumPercent: 50,
+      }))
+    : [{ ...examComponents[0], weightPercent: 100, minimumPercent: null }],
   requiredSubjects: [],
   qualifications: [],
   status: "draft",
@@ -1484,6 +1670,29 @@ function RuleBuilder({
   const { busy, error, run } = useRequest();
   const [revision, setRevision] = useState(initialRevision),
     [saved, setSaved] = useState(false);
+  const [recovery, setRecovery] = useState(() =>
+    initial
+      ? recoveredDrafts(session.institutionId!).find(
+          (d) => d.rule.id === initial.id,
+        )
+      : undefined,
+  );
+  const [storageWarning, setStorageWarning] = useState(false),
+    [remoteDraft, setRemoteDraft] = useState<{
+      rule: AdmissionRulebook;
+      revision: number;
+    } | null>(null);
+  const compareDraft = async () => {
+    const workspace = await api<{
+      drafts: { rule: AdmissionRulebook; revision: number }[];
+    }>("/office/workspace", { token: session.token });
+    const latest = workspace.drafts.find((d) => d.rule.id === rule.id);
+    if (!latest)
+      throw new Error(
+        "No saved draft was found. Keep your local changes and check the published history.",
+      );
+    setRemoteDraft(latest);
+  };
   const saveDraft = async () => {
     const value = await api<{ revision: number }>("/office/rulebooks/drafts", {
       method: "POST",
@@ -1491,6 +1700,9 @@ function RuleBuilder({
       body: { rule, expectedRevision: revision },
     });
     setRevision(value.revision);
+    forgetDraft(rule);
+    setRecovery(undefined);
+    setRemoteDraft(null);
     setSaved(true);
     await refresh();
   };
@@ -1502,180 +1714,375 @@ function RuleBuilder({
     "Review rulebook",
   ];
   useEffect(() => {
-    let cancelled=false;
+    let cancelled = false;
     setHash("");
-    if(step===3) void rulebookCommitment(rule).then(value=>{if(!cancelled)setHash(value);}).catch(()=>{});
-    return()=>{cancelled=true;};
-  }, [rule,step]);
+    if (step === 3)
+      void rulebookCommitment(rule)
+        .then((value) => {
+          if (!cancelled) setHash(value);
+        })
+        .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [rule, step]);
   const patch = (value: Partial<AdmissionRulebook>) => {
     if (busy || published) return;
     setSaved(false);
-    setRule({ ...rule, ...value });
+    const next = { ...rule, ...value };
+    setRule(next);
+    setStorageWarning(!rememberDraft(next, revision));
   };
   return (
     <div className="restored-rule-builder">
-      <ol className="rule-builder-steps" aria-label="Rulebook progress">{steps.map((name,index)=><li key={name} className={step===index?"current":step>index?"complete":""} aria-current={step===index?"step":undefined}><span>{step>index?<Icon name="check" size={15}/>:index+1}</span>{name}</li>)}</ol>
-      <div className="rule-builder-layout"><section className="rule-builder-workspace">
-      <div className="section-heading">
-        <div>
-          <h2>{steps[step]}</h2>
-          <p className="builder-step-intro">{["Give the rules a program, round and seat limit.","Choose the scores, then give each one its share.","Set the minimums students must meet.","Check the complete version before publishing it."][step]}</p>
-        </div>
-        <button
-          className="button button-secondary"
-          disabled={busy || !!published}
-          onClick={() => void run(saveDraft, { loading: "Saving your draft…", success: "Draft saved. You can continue editing later." })}
-        >
-          Save draft
-        </button>
-      </div>
-      {saved ? (
-        <p role="status">Draft saved. You can open it on another device.</p>
-      ) : null}
-      {zkEnabled ? <p className="fine-print">Private proof support: three exam subjects out of 100, two decimal places, weighted scores and subject minimums. Curriculum and GPAX are not part of this proof.</p> : null}
-      <fieldset className="rule-editor-fields" disabled={busy || !!published}>
-      {step === 0 ? (
-        <div className="builder-fields">
-          {(["programId", "programName", "faculty", "round"] as const).map(
-            (key) => (
-              <Field
-                key={key}
-                label={
-                  {
-                    programId: "Program slug",
-                    programName: "Program name",
-                    faculty: "Faculty",
-                    round: "Admission round",
-                  }[key]
-                }
-              >
-                <input
-                  value={rule[key]}
-                  onChange={(e) => patch({ [key]: e.target.value })}
-                />
-              </Field>
-            ),
-          )}
-          <Field label="Degree (optional)">
-            <input
-              value={rule.degree ?? ""}
-              onChange={(e) => patch({ degree: e.target.value || undefined })}
-            />
-          </Field>
-          <Field label="Academic year">
-            <input
-              type="number"
-              min="2020"
-              max="2100"
-              value={Number.isFinite(rule.academicYear) ? rule.academicYear : ""}
-              onChange={(e) => patch({ academicYear: e.target.valueAsNumber })}
-            />
-          </Field>
-          <Field label="Capacity">
-            <input
-              type="number"
-              min="1"
-              max="10000"
-              value={Number.isFinite(rule.capacity) ? rule.capacity : ""}
-              onChange={(e) => patch({ capacity: e.target.valueAsNumber })}
-            />
-          </Field>
+      {recovery ? (
+        <div className="office-draft-recovery">
+          <p>
+            Unsaved changes from{" "}
+            {new Date(recovery.updatedAt).toLocaleString("en-GB")} are available
+            on this device. They have not been published.
+          </p>
+          <div className="live-actions">
+            <button
+              className="button button-secondary"
+              onClick={() => {
+                setRule(recovery.rule);
+                setRevision(recovery.revision);
+                setSaved(false);
+                setRecovery(undefined);
+              }}
+            >
+              Recover unsaved changes
+            </button>
+            <button
+              className="text-button"
+              onClick={() => {
+                forgetDraft(recovery.rule);
+                setRecovery(undefined);
+              }}
+            >
+              Discard recovery copy
+            </button>
+          </div>
         </div>
       ) : null}
-      {step === 1 ? <RuleScoringEditor rule={rule} onChange={patch} /> : null}
-      {step === 2 ? <RuleEligibilityEditor rule={rule} onChange={patch} /> : null}
-      {step === 3 ? (
-        <>
-          <RulePublicationReview rule={rule} fingerprint={hash} />
-          {[...validateRulebook(rule),...proofPolicyErrors].map((message) => (
-            <p key={message} className="live-error">
-              {message}
-            </p>
-          ))}
-          <button
-            className="button button-primary"
-            disabled={busy || !!published || !hash || validateRulebook(rule).length > 0 || proofPolicyErrors.length > 0}
-            onClick={() =>
-              void run(async () => {
-                if (
-                  !confirm(
-                    "Publish this rulebook? The smart contract will record its fingerprint and seat limit, then lock this intake. You cannot replace these rules afterward. The university account pays the network fee.",
-                  )
-                )
-                  return;
-                await saveDraft();
-                const result = await toast.promise((async () => {
-                  const response = await api<{
-                    programId: string;
-                    rulesHash: string;
-                    lock: Receipt | null;
-                  }>("/office/rulebooks/publish", {
-                    method: "POST", token: session.token, body: rule,
-                  });
-                  if (response.rulesHash !== hash) throw new Error("The returned commitment does not match this rulebook.");
-                  return response;
-                })(), {
-                  loading: "Publishing rules… waiting for network confirmation.",
-                  success: (response) => response.lock?.chainId === 43113 || response.lock?.chainId === 43114
-                    ? "Published on Avalanche. This intake’s rules are locked."
-                    : "Rules published and locked on the connected network.",
-                  error: errorMessage,
-                });
-                setPublished(result);
-                await refresh();
-              })
+      {storageWarning ? (
+        <p role="alert">
+          This browser could not save a recovery copy. Use Save draft before
+          leaving.
+        </p>
+      ) : null}
+      <ol className="rule-builder-steps" aria-label="Rulebook progress">
+        {steps.map((name, index) => (
+          <li
+            key={name}
+            className={
+              step === index ? "current" : step > index ? "complete" : ""
             }
+            aria-current={step === index ? "step" : undefined}
           >
-            {busy
-              ? "Publishing… waiting for network confirmation"
-              : published
-                ? "Rules locked"
-                : "Publish on Avalanche"}
-          </button>
-          <RuleTrial rule={rule} />
-          <Json value={rule} label="View the full rulebook data" />
-        </>
-      ) : null}
-      </fieldset>
-      {error ? <Alert>{error}</Alert> : null}
-      {published ? (
-        <div role="status">
-          <h3>Rules locked on chain</h3>
-          <p className="live-id">{published.programId}</p>
-          <ReceiptView value={published.lock} />
-          <button
-            className="button"
-            onClick={() => {
-              setRule({
-                ...defaultRule(zkEnabled),
-                institutionId: session.institutionId!,
-              });
-              setPublished(null);
-              setRevision(0);
-              setSaved(false);
-              setStep(0);
-            }}
+            <span>
+              {step > index ? <Icon name="check" size={15} /> : index + 1}
+            </span>
+            {name}
+          </li>
+        ))}
+      </ol>
+      <div className="rule-builder-layout">
+        <section className="rule-builder-workspace">
+          <div className="section-heading">
+            <div>
+              <h2>{steps[step]}</h2>
+              <p className="builder-step-intro">
+                {
+                  [
+                    "Give the rules a program, round and seat limit.",
+                    "Choose the scores, then give each one its share.",
+                    "Set the minimums students must meet.",
+                    "Check the complete version before publishing it.",
+                  ][step]
+                }
+              </p>
+            </div>
+            <button
+              className="button button-secondary"
+              disabled={busy || !!published}
+              onClick={() =>
+                void run(saveDraft, {
+                  loading: "Saving your draft…",
+                  success: "Draft saved. You can continue editing later.",
+                })
+              }
+            >
+              Save draft
+            </button>
+          </div>
+          {saved ? (
+            <p role="status">Draft saved. You can open it on another device.</p>
+          ) : null}
+          {zkEnabled ? (
+            <p className="fine-print">
+              Private proof support: three exam subjects out of 100, two decimal
+              places, weighted scores and subject minimums. Curriculum and GPAX
+              are not part of this proof.
+            </p>
+          ) : null}
+          <fieldset
+            className="rule-editor-fields"
+            disabled={busy || !!published}
           >
-            Create another intake
-          </button>
-        </div>
-      ) : null}
-      <div className="builder-navigation">
-        {step > 0 ? (
-          <button className="button" onClick={() => setStep(step - 1)}>
-            Back
-          </button>
-        ) : null}
-        {step < 3 ? (
-          <button
-            className="button button-primary"
-            onClick={() => setStep(step + 1)}
-          >
-            Continue
-          </button>
-        ) : null}
+            {step === 0 ? (
+              <div className="builder-fields">
+                {(
+                  ["programId", "programName", "faculty", "round"] as const
+                ).map((key) => (
+                  <Field
+                    key={key}
+                    label={
+                      {
+                        programId: "Program slug",
+                        programName: "Program name",
+                        faculty: "Faculty",
+                        round: "Admission round",
+                      }[key]
+                    }
+                  >
+                    <input
+                      value={rule[key]}
+                      onChange={(e) => patch({ [key]: e.target.value })}
+                    />
+                  </Field>
+                ))}
+                <Field label="Degree (optional)">
+                  <input
+                    value={rule.degree ?? ""}
+                    onChange={(e) =>
+                      patch({ degree: e.target.value || undefined })
+                    }
+                  />
+                </Field>
+                <Field label="Academic year">
+                  <input
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    value={
+                      Number.isFinite(rule.academicYear)
+                        ? rule.academicYear
+                        : ""
+                    }
+                    onChange={(e) =>
+                      patch({ academicYear: e.target.valueAsNumber })
+                    }
+                  />
+                </Field>
+                <Field label="Capacity">
+                  <input
+                    type="number"
+                    min="1"
+                    max="10000"
+                    value={Number.isFinite(rule.capacity) ? rule.capacity : ""}
+                    onChange={(e) =>
+                      patch({ capacity: e.target.valueAsNumber })
+                    }
+                  />
+                </Field>
+              </div>
+            ) : null}
+            {step === 1 ? (
+              <RuleScoringEditor rule={rule} onChange={patch} />
+            ) : null}
+            {step === 2 ? (
+              <RuleEligibilityEditor rule={rule} onChange={patch} />
+            ) : null}
+            {step === 3 ? (
+              <>
+                <RulePublicationReview
+                  rule={rule}
+                  fingerprint={hash}
+                  zkEnabled={zkEnabled}
+                />
+                {[...validateRulebook(rule), ...proofPolicyErrors].map(
+                  (message) => (
+                    <p key={message} className="live-error">
+                      {message}
+                    </p>
+                  ),
+                )}
+                <button
+                  className="button button-primary"
+                  disabled={
+                    busy ||
+                    !!published ||
+                    !hash ||
+                    validateRulebook(rule).length > 0 ||
+                    proofPolicyErrors.length > 0
+                  }
+                  onClick={() =>
+                    void run(async () => {
+                      if (
+                        !confirm(
+                          "Publish this rulebook? The smart contract records this version and seat limit. Published versions stay in history; permitted amendments depend on the registry and issuance state. The university account pays the network fee.",
+                        )
+                      )
+                        return;
+                      await saveDraft();
+                      const result = await toast.promise(
+                        (async () => {
+                          const response = await api<{
+                            programId: string;
+                            rulesHash: string;
+                            lock: Receipt | null;
+                          }>("/office/rulebooks/publish", {
+                            method: "POST",
+                            token: session.token,
+                            body: rule,
+                          });
+                          if (response.rulesHash !== hash)
+                            throw new Error(
+                              "The returned commitment does not match this rulebook.",
+                            );
+                          return response;
+                        })(),
+                        {
+                          loading:
+                            "Publishing rules… waiting for network confirmation.",
+                          success: (response) =>
+                            response.lock?.chainId === 43113 ||
+                            response.lock?.chainId === 43114
+                              ? "Published on Avalanche. This intake’s rules are locked."
+                              : "Rules published and locked on the connected network.",
+                          error: errorMessage,
+                        },
+                      );
+                      setPublished(result);
+                      await refresh();
+                    })
+                  }
+                >
+                  {busy
+                    ? "Publishing… waiting for network confirmation"
+                    : published
+                      ? "Rules locked"
+                      : "Publish on Avalanche"}
+                </button>
+                <RuleTrial rule={rule} />
+                <Json value={rule} label="View the full rulebook data" />
+              </>
+            ) : null}
+          </fieldset>
+          {error ? (
+            <div>
+              <Alert>{error}</Alert>
+              <button
+                className="button button-secondary"
+                disabled={busy}
+                onClick={() => void run(compareDraft)}
+              >
+                Compare latest saved draft
+              </button>
+            </div>
+          ) : null}
+          {remoteDraft ? (
+            <section className="office-draft-recovery">
+              <h3>Compare before reloading</h3>
+              <p>
+                Your unsaved changes are kept on this device. Reloading uses
+                saved revision {remoteDraft.revision}; it does not overwrite
+                that version.
+              </p>
+              <div className="live-grid">
+                <Json value={rule} label="Your current changes" />
+                <Json value={remoteDraft.rule} label="Latest saved draft" />
+              </div>
+              <button
+                className="button button-secondary"
+                disabled={busy}
+                onClick={() => {
+                  rememberDraft(rule, revision);
+                  setRule(remoteDraft.rule);
+                  setRevision(remoteDraft.revision);
+                  setRemoteDraft(null);
+                  setSaved(true);
+                }}
+              >
+                Use latest saved draft
+              </button>
+            </section>
+          ) : null}
+          {published ? (
+            <div role="status">
+              <h3>Rules locked on chain</h3>
+              <p className="live-id">{published.programId}</p>
+              <ReceiptView value={published.lock} />
+              <button
+                className="button"
+                onClick={() => {
+                  setRule({
+                    ...defaultRule(zkEnabled),
+                    institutionId: session.institutionId!,
+                  });
+                  setPublished(null);
+                  setRevision(0);
+                  setSaved(false);
+                  setStep(0);
+                }}
+              >
+                Create another intake
+              </button>
+            </div>
+          ) : null}
+          <div className="builder-navigation">
+            {step > 0 ? (
+              <button className="button" onClick={() => setStep(step - 1)}>
+                Back
+              </button>
+            ) : null}
+            {step < 3 ? (
+              <button
+                className="button button-primary"
+                onClick={() => setStep(step + 1)}
+              >
+                Continue
+              </button>
+            ) : null}
+          </div>
+        </section>
+        <aside className="rule-builder-aside">
+          <span className="story-symbol">
+            <Icon name="file" size={27} />
+          </span>
+          <h2>
+            One rulebook.
+            <br />A shared reference.
+          </h2>
+          <p>
+            The weights you define here are the weights students see beside
+            their calculation.
+          </p>
+          <div className="rule-aside-path">
+            <span>
+              <Icon name="university" size={18} />
+              You define the rules
+            </span>
+            <Icon name="down" size={16} />
+            <span>
+              <Icon name="lock" size={18} />A version preserves them
+            </span>
+            <Icon name="down" size={16} />
+            <span>
+              <Icon name="chart" size={18} />
+              Students inspect the same rules
+            </span>
+          </div>
+          <p className="fine-print">
+            Universities set program rules. The central simulator handles
+            preferences and allocation. Publishing uses the university’s
+            configured account to record and lock a rules reference on the
+            blockchain.
+          </p>
+        </aside>
       </div>
-    </section><aside className="rule-builder-aside"><span className="story-symbol"><Icon name="file" size={27}/></span><h2>One rulebook.<br/>A shared reference.</h2><p>The weights you define here are the weights students see beside their calculation.</p><div className="rule-aside-path"><span><Icon name="university" size={18}/>You define the rules</span><Icon name="down" size={16}/><span><Icon name="lock" size={18}/>A version preserves them</span><Icon name="down" size={16}/><span><Icon name="chart" size={18}/>Students inspect the same rules</span></div><p className="fine-print">Universities set program rules. The central simulator handles preferences and allocation. Publishing uses the university’s configured account to record and lock a rules reference on the blockchain.</p></aside></div>
     </div>
   );
 }
@@ -1683,10 +2090,12 @@ function Simulation({
   session,
   programs,
   refresh,
+  onBusyChange,
 }: {
   session: Session;
   programs: PublicProgram[];
   refresh: () => Promise<void>;
+  onBusyChange: (value: boolean) => void;
 }) {
   type Applicant = {
     id: string;
@@ -1729,7 +2138,8 @@ function Simulation({
   }, []);
   const eligible = programs.filter(
     (p) =>
-      p.currentRules !== false && p.rulebook?.institutionId === session.institutionId &&
+      p.currentRules !== false &&
+      p.rulebook?.institutionId === session.institutionId &&
       p.rulesMatch &&
       p.lockedAt !== "0",
   );
@@ -1765,22 +2175,43 @@ function Simulation({
     })),
   });
   const process = async (body: Payload) => {
-    setPending(body);
-    await toast.promise(api("/office/simulations", {
-      method: "POST", token: session.token, body,
-    }), {
-      loading: "Processing admissions… waiting for results.",
-      success: "Admissions processed. The results are ready to review.",
-      error: errorMessage,
-    });
-    setCompleted(true);
-    await refresh();
-    await load();
+    onBusyChange(true);
+    try {
+      setPending(body);
+      try {
+        await toast.promise(
+          api("/office/simulations", {
+            method: "POST",
+            token: session.token,
+            body,
+          }),
+          {
+            loading: "Processing admissions… waiting for results.",
+            success: "Admissions processed. The results are ready to review.",
+            error: errorMessage,
+          },
+        );
+      } catch (e) {
+        if (e instanceof ApiError && [400, 403, 404, 409].includes(e.status))
+          setPending(null);
+        await load().catch(() => {});
+        throw e;
+      }
+      setCompleted(true);
+      await refresh();
+      await load();
+    } finally {
+      onBusyChange(false);
+    }
   };
   return (
     <section className="panel live-panel">
       <h2>Process admissions</h2>
-      <p>Fictional applicants. One completed cohort per intake.</p>
+      <p>
+        Fictional applicants. One completed cohort per intake. Choose the year
+        and round before importing; changing programs clears unrecorded
+        applicants.
+      </p>
       <fieldset disabled={busy || !!pending}>
         <legend>Choose locked programs from the same round</legend>
         {eligible.map((p) => (
@@ -1788,7 +2219,20 @@ function Simulation({
             <input
               type="checkbox"
               checked={selected.includes(p.programId)}
+              disabled={
+                !!rules.length &&
+                !selected.includes(p.programId) &&
+                (p.academicYear !== rules[0].academicYear ||
+                  p.rulebook!.round !== rules[0].round)
+              }
               onChange={(e) => {
+                if (
+                  applicants.length &&
+                  !confirm(
+                    "Changing programs clears the unrecorded applicant list. Continue?",
+                  )
+                )
+                  return;
                 setSelected(
                   e.target.checked
                     ? [...selected, p.programId]
@@ -1804,6 +2248,24 @@ function Simulation({
       </fieldset>
       {rules.length ? (
         <>
+          <div className="office-intake-context">
+            <strong>
+              {rules[0].academicYear} · {rules[0].round}
+            </strong>
+            <span>
+              {rules.map((r) => r.programName).join(" / ")} ·{" "}
+              {applicants.length} / 100 applicants
+            </span>
+          </div>
+          <CohortImport
+            rules={rules}
+            token={session.token}
+            disabled={busy || !!pending}
+            onApply={(rows) => {
+              setApplicants(rows);
+              setPreview(null);
+            }}
+          />
           <button
             className="button button-secondary"
             disabled={busy || !!pending || applicants.length >= 100}
@@ -1850,7 +2312,11 @@ function Simulation({
                     min={0}
                     max={c.maximum}
                     step="any"
-                    value={Number.isFinite(a.scores[c.scoreId]) ? a.scores[c.scoreId] : ""}
+                    value={
+                      Number.isFinite(a.scores[c.scoreId])
+                        ? a.scores[c.scoreId]
+                        : ""
+                    }
                     onChange={(e) =>
                       update(index, {
                         scores: {
@@ -1941,7 +2407,15 @@ function Simulation({
                     throw new Error(
                       "Choose programs from the same year and round.",
                     );
-                  setPreview(allocatePreview(rules, body.applicants, {scorePrecision:programs.some(p=>p.protocolVersion===2)?"hundredths-half-up":"unrounded"}));
+                  setPreview(
+                    allocatePreview(rules, body.applicants, {
+                      scorePrecision: programs.some(
+                        (p) => p.protocolVersion === 2,
+                      )
+                        ? "hundredths-half-up"
+                        : "unrounded",
+                    }),
+                  );
                 })
               }
             >
@@ -1999,8 +2473,15 @@ function Simulation({
           device.
         </p>
       ) : null}
-      <details>
+      <details open={!!error}>
         <summary>Saved processing runs</summary>
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() => void run(load)}
+        >
+          Refresh saved runs
+        </button>
         {history.map((h) => (
           <p key={h.runId}>
             {h.runId} · {h.completedAt ? "Completed" : "Pending"}
@@ -2027,180 +2508,15 @@ function Simulation({
     </section>
   );
 }
-function IssueWizard({
-  session,
-  programs,
-  results,
-  refresh,
-}: {
-  session: Session;
-  programs: PublicProgram[];
-  results: OfficeResult[];
-  refresh: () => Promise<void>;
-}) {
-  const [programId, setProgramId] = useState(""),
-    [step, setStep] = useState(0),
-    [chosen, setChosen] = useState<string[]>([]),
-    [done, setDone] = useState<string[]>([]);
-  const { busy, error, run } = useRequest();
-  const program = programs.find((p) => p.programId === programId);
-  const ready = results.filter(
-    (r) =>
-      r.programId === programId &&
-      r.outcome === "admitted" &&
-      r.confirmationRequestedAt &&
-      !r.credential && (program?.protocolVersion !== 2 || r.scoring?.some(e=>e.programId===programId && e.status==="verified" && e.eligible)),
-  );
-  return (
-    <div className="connected-issuance">
-      <div className="live-steps">
-        {["Choose program", "Import confirmed students", "Review & issue"].map(
-          (label, i) => (
-            <button
-              key={label}
-              disabled={busy || i > step}
-              className={i === step ? "active" : ""}
-              onClick={() => setStep(i)}
-            >
-              {i + 1}. {label}
-            </button>
-          ),
-        )}
-      </div>
-      {step === 0 ? (
-        <>
-          <Field label="Issuance program">
-            <select
-              value={programId}
-              onChange={(e) => {
-                setProgramId(e.target.value);
-                setChosen([]);
-                setDone([]);
-              }}
-            >
-              <option value="">Choose a program</option>
-              {programs
-                .filter(
-                  (p) => p.rulebook?.institutionId === session.institutionId,
-                )
-                .map((p) => (
-                  <option value={p.programId} key={p.programId}>
-                    {p.rulebook!.programName} · {p.rulebook!.round}
-                  </option>
-                ))}
-            </select>
-          </Field>
-          <button
-            className="button button-primary"
-            disabled={!programId || busy}
-            onClick={() => setStep(1)}
-          >
-            Continue
-          </button>
-        </>
-      ) : step === 1 ? (
-        <>
-          <h3>Confirmed students</h3>
-          <p>
-            Only authenticated confirmations from saved admission results appear
-            here.
-          </p>
-          <button
-            className="button button-secondary"
-            disabled={busy}
-            onClick={() => void run(refresh)}
-          >
-            Refresh confirmations
-          </button>
-          {ready.map((r) => (
-            <label className="connected-check" key={r.resultId}>
-              <input
-                type="checkbox"
-                checked={chosen.includes(r.resultId)}
-                onChange={(e) =>
-                  setChosen(
-                    e.target.checked
-                      ? [...chosen, r.resultId]
-                      : chosen.filter((id) => id !== r.resultId),
-                  )
-                }
-              />
-              {r.studentId}
-            </label>
-          ))}
-          {!ready.length ? (
-            <p>No confirmed students are ready for issuance.</p>
-          ) : null}
-          <button
-            className="button button-primary"
-            disabled={!chosen.length || busy}
-            onClick={() => setStep(2)}
-          >
-            Review & issue
-          </button>
-        </>
-      ) : (
-        <>
-          <h3>One last look.</h3>
-          <p>
-            {program?.rulebook?.programName} · {chosen.length} selected
-          </p>
-          <p>
-            {program?.active} active rights / {program?.capacity} seats ·{" "}
-            {program?.issuanceAllowance} issuance allowance
-          </p>
-          <p className="fine-print">
-            The contract checks authorization, confirmation and capacity for
-            every token.
-          </p>
-          <button
-            className="button button-primary"
-            disabled={
-              busy ||
-              !chosen.length ||
-              chosen.length > (program?.issuanceAllowance ?? 0) ||
-              chosen.length > (program ? program.capacity - program.active : 0)
-            }
-            onClick={() => {
-              if (confirm(`Issue ${chosen.length} admission tokens on chain?`))
-                void run(async () => {
-                  try {
-                    for (const id of chosen) {
-                      if (done.includes(id)) continue;
-                      await api(`/issuer/results/${id}/issue`, {
-                        method: "POST",
-                        token: session.token,
-                      });
-                      setDone((old) => [...old, id]);
-                    }
-                    setChosen([]);
-                    toast.success("Selected admission tokens issued. The network has confirmed them.");
-                  } finally {
-                    await refresh();
-                  }
-                });
-            }}
-          >
-            {busy ? "Waiting for chain…" : `Issue ${chosen.length} tokens`}
-          </button>
-          {done.length ? (
-            <p role="status">{done.length} admission tokens issued.</p>
-          ) : null}
-        </>
-      )}
-      {error ? <Alert>{error}</Alert> : null}
-    </div>
-  );
-}
-
 function University() {
   const { session, save } = useSession("institution");
   const [tab, setTab] = useState<"rules" | "process" | "issue">("rules"),
     [editing, setEditing] = useState<AdmissionRulebook | null>(null),
     [editRevision, setEditRevision] = useState(0);
-  const [zkEnabled,setZkEnabled] = useState(false);
+  const [zkEnabled, setZkEnabled] = useState(false),
+    [officeBusy, setOfficeBusy] = useState(false);
   const [drafts, setDrafts] = useState<
-    { rule: AdmissionRulebook; revision: number }[]
+    { rule: AdmissionRulebook; revision: number; local?: boolean }[]
   >([]);
   const [programs, setPrograms] = useState<PublicProgram[]>([]),
     [results, setResults] = useState<OfficeResult[]>([]),
@@ -2215,12 +2531,20 @@ function University() {
           "/office/workspace",
           { token: session!.token },
         ),
-        api<{scoringProofs:boolean}>("/public/capabilities"),
+        api<{ scoringProofs: boolean }>("/public/capabilities"),
       ]);
       setZkEnabled(capabilities.scoringProofs);
       setPrograms(p);
       setResults(r);
-      setDrafts(workspace.drafts);
+      setDrafts([
+        ...workspace.drafts,
+        ...recoveredDrafts(session!.institutionId!)
+          .filter(
+            (d) =>
+              !workspace.drafts.some((saved) => saved.rule.id === d.rule.id),
+          )
+          .map((d) => ({ ...d, local: true })),
+      ]);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) save(null);
       throw e;
@@ -2240,7 +2564,7 @@ function University() {
       </Heading>
       <button
         className="button"
-        disabled={busy}
+        disabled={busy || officeBusy}
         onClick={() =>
           void run(async () => {
             await api("/auth/institution/logout", {
@@ -2265,6 +2589,7 @@ function University() {
           <button
             key={id}
             className={tab === id ? "active" : ""}
+            disabled={busy || officeBusy}
             aria-pressed={tab === id}
             onClick={() => setTab(id)}
           >
@@ -2282,8 +2607,10 @@ function University() {
                   confirm(
                     "Leave this editor? Save your draft first to keep changes.",
                   )
-                )
+                ) {
                   setEditing(null);
+                  void run(refresh);
+                }
               }}
             >
               ← All rulebooks
@@ -2321,7 +2648,18 @@ function University() {
                 )
                 .map((p) => (
                   <article key={p.programId} className="rulebook-program">
-                    <div className="rulebook-program-heading"><span className="rule-program-symbol"><Icon name="file" size={24}/></span><div><span>{p.academicYear} · {p.rulebook!.round}</span><h3>{p.rulebook!.programName}</h3></div><Badge tone="green">Published</Badge></div>
+                    <div className="rulebook-program-heading">
+                      <span className="rule-program-symbol">
+                        <Icon name="file" size={24} />
+                      </span>
+                      <div>
+                        <span>
+                          {p.academicYear} · {p.rulebook!.round}
+                        </span>
+                        <h3>{p.rulebook!.programName}</h3>
+                      </div>
+                      <Badge tone="green">Published</Badge>
+                    </div>
                     <p>
                       {p.academicYear} · {p.rulebook!.round}
                     </p>
@@ -2336,17 +2674,44 @@ function University() {
                       </div>
                     </dl>
                     <RuleWeightComposition rule={p.rulebook!} />
-                    {zkEnabled && p.currentRules !== false && p.historicalIssued === 0 ? <button className="text-button" onClick={()=>{
-                      setEditing({...structuredClone(p.rulebook!),id:`${p.rulebook!.programId}-v${p.rulebook!.version+1}-${crypto.randomUUID()}`,version:p.rulebook!.version+1,status:"draft",createdAt:new Date().toISOString(),sealedAt:null,commitment:null,chainReference:null,publication:null});setEditRevision(0);
-                    }}>Create amended version <Icon name="arrow" size={15}/></button> : null}
-                    {p.currentRules === false ? <p className="fine-print">Historical version. A newer published version applies to this intake.</p> : null}
+                    {zkEnabled &&
+                    p.currentRules !== false &&
+                    p.historicalIssued === 0 ? (
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          setEditing({
+                            ...structuredClone(p.rulebook!),
+                            id: `${p.rulebook!.programId}-v${p.rulebook!.version + 1}-${crypto.randomUUID()}`,
+                            version: p.rulebook!.version + 1,
+                            status: "draft",
+                            createdAt: new Date().toISOString(),
+                            sealedAt: null,
+                            commitment: null,
+                            chainReference: null,
+                            publication: null,
+                          });
+                          setEditRevision(0);
+                        }}
+                      >
+                        Create amended version <Icon name="arrow" size={15} />
+                      </button>
+                    ) : null}
+                    {p.currentRules === false ? (
+                      <p className="fine-print">
+                        Historical version. A newer published version applies to
+                        this intake.
+                      </p>
+                    ) : null}
                     <details>
                       <summary>View rulebook & history</summary>
                       <Json value={p.rulebook} />
                       <ReceiptView value={p.lock} />
                       <p>
-                        Published rules are immutable. A changed intake needs a
-                        new round.
+                        Published versions stay in history.{" "}
+                        {zkEnabled
+                          ? "An amended version is allowed only before any issuance; otherwise use a new intake."
+                          : "Changed rules require a new intake."}
                       </p>
                     </details>
                     <button
@@ -2377,7 +2742,18 @@ function University() {
                 )
                 .map((d) => (
                   <article className="rulebook-program" key={d.rule.id}>
-                    <div className="rulebook-program-heading"><span className="rule-program-symbol"><Icon name="file" size={24}/></span><div><span>{d.rule.academicYear} · {d.rule.round}</span><h3>{d.rule.programName}</h3></div><Badge>Draft</Badge></div>
+                    <div className="rulebook-program-heading">
+                      <span className="rule-program-symbol">
+                        <Icon name="file" size={24} />
+                      </span>
+                      <div>
+                        <span>
+                          {d.rule.academicYear} · {d.rule.round}
+                        </span>
+                        <h3>{d.rule.programName}</h3>
+                      </div>
+                      <Badge>{d.local ? "On this device" : "Draft"}</Badge>
+                    </div>
                     <p>
                       {d.rule.academicYear} · {d.rule.capacity} seats · v
                       {d.rule.version}
@@ -2408,142 +2784,191 @@ function University() {
         )
       ) : null}
       {tab === "process" ? (
-        <Simulation session={session} programs={programs} refresh={refresh} />
+        <Simulation
+          session={session}
+          programs={programs}
+          refresh={refresh}
+          onBusyChange={setOfficeBusy}
+        />
       ) : null}
       {tab === "issue" ? (
         <section className="panel live-panel">
           <h2>Issue admission tokens.</h2>
-          <IssueWizard
+          <IssuanceWorkspace
             session={session}
             programs={programs}
             results={results}
             refresh={refresh}
+            onBusyChange={setOfficeBusy}
           />
-          <h3>Manage issued records</h3>
-          <button
-            className="button"
-            disabled={busy}
-            onClick={() => void run(refresh)}
-          >
-            Refresh confirmations
-          </button>
-          {receipt ? <ReceiptView value={receipt} /> : null}
-          {results.length === 0 ? <p>No processed results yet.</p> : null}
-          {results.map((record) => (
-            <article className="live-result" key={record.resultId}>
-              <h3>
-                {record.studentId} · {record.outcome}
-              </h3>
-              <p>
-                {record.credential
-                  ? `Right: ${record.credential.lifecycle}`
-                  : record.outcome === "not_admitted"
-                    ? "Result only; no admission right"
-                    : record.confirmationRequestedAt
-                      ? "Confirmation requested"
-                      : "Awaiting student confirmation"}
-              </p>
-              <p className="live-id">{record.resultId}</p>
-              <div className="live-actions">
-                {record.outcome === "admitted" &&
-                record.confirmationRequestedAt &&
-                !record.credential ? (
-                  <button
-                    className="button button-primary"
-                    disabled={busy || (zkEnabled && !record.scoring?.some(e=>e.programId===record.programId && e.status==="verified" && e.eligible))}
-                    onClick={() =>
-                      void run(async () => {
-                        if (
-                          !confirm(
-                            "Issue this confirmed admission token on chain?",
-                          )
+          <details className="office-record-management">
+            <summary>Individual records and lifecycle actions</summary>
+            <fieldset disabled={officeBusy}>
+              <button
+                className="button"
+                disabled={busy}
+                onClick={() => void run(refresh)}
+              >
+                Refresh confirmations
+              </button>
+              {receipt ? <ReceiptView value={receipt} /> : null}
+              {results.length === 0 ? <p>No processed results yet.</p> : null}
+              {results.map((record) => (
+                <article className="live-result" key={record.resultId}>
+                  <h3>
+                    {record.studentId} · {record.outcome}
+                  </h3>
+                  <p>
+                    {record.credential
+                      ? `Right: ${record.credential.lifecycle}`
+                      : record.outcome === "not_admitted"
+                        ? "Result only; no admission right"
+                        : record.confirmationRequestedAt
+                          ? "Accepted in FairPass"
+                          : "Awaiting offer acceptance"}
+                  </p>
+                  <p className="live-id">{record.resultId}</p>
+                  <div className="live-actions">
+                    {record.outcome === "admitted" &&
+                    record.confirmationRequestedAt &&
+                    !record.credential ? (
+                      <button
+                        className="button button-primary"
+                        disabled={
+                          busy ||
+                          (zkEnabled &&
+                            !record.scoring?.some(
+                              (e) =>
+                                e.programId === record.programId &&
+                                e.status === "verified" &&
+                                e.eligible,
+                            ))
+                        }
+                        onClick={() =>
+                          void run(async () => {
+                            if (
+                              !confirm(
+                                "Issue this confirmed admission token on chain?",
+                              )
+                            )
+                              return;
+                            const response = await api<{
+                              issuance: Receipt | null;
+                            }>(`/issuer/results/${record.resultId}/issue`, {
+                              method: "POST",
+                              token: session.token,
+                            });
+                            setReceipt(response.issuance);
+                            toast.success(
+                              "Admission token issued. The network has confirmed it.",
+                            );
+                            await refresh();
+                          })
+                        }
+                      >
+                        {busy ? "Waiting for chain…" : "Issue admission right"}
+                      </button>
+                    ) : null}
+                    {record.credential ? (
+                      <>
+                        <a
+                          className="button"
+                          href={`/verify/${record.credential.credentialId}`}
+                        >
+                          Public verification
+                        </a>
+                        {record.credential.lifecycle === "valid" ||
+                        record.credential.lifecycle === "enrolled"
+                          ? (["enrolled", "withdrawn", "revoked"] as const)
+                              .filter(
+                                (status) =>
+                                  status !== record.credential!.lifecycle,
+                              )
+                              .map((status) => (
+                                <button
+                                  className="button"
+                                  key={status}
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void run(async () => {
+                                      const reason = prompt(
+                                        `Reason for ${status} (stored only as a hash on chain):`,
+                                      );
+                                      if (!reason?.trim()) return;
+                                      if (
+                                        !confirm(
+                                          `Set this credential to ${status}? Withdrawn and revoked rights cannot be restored.`,
+                                        )
+                                      )
+                                        return;
+                                      const digest = await crypto.subtle.digest(
+                                        "SHA-256",
+                                        new TextEncoder().encode(reason),
+                                      );
+                                      const reasonCommitment =
+                                        "0x" +
+                                        Array.from(
+                                          new Uint8Array(digest),
+                                          (b) =>
+                                            b.toString(16).padStart(2, "0"),
+                                        ).join("");
+                                      const response = await api<{
+                                        transaction: Receipt | null;
+                                      }>(
+                                        `/issuer/credentials/${record.credential!.credentialId}/status`,
+                                        {
+                                          method: "POST",
+                                          token: session.token,
+                                          body: { status, reasonCommitment },
+                                        },
+                                      );
+                                      setReceipt(response.transaction);
+                                      toast.success(
+                                        `Admission token ${status}. The network has confirmed the update.`,
+                                      );
+                                      await refresh();
+                                    })
+                                  }
+                                >
+                                  {status}
+                                </button>
+                              ))
+                          : null}
+                      </>
+                    ) : null}
+                  </div>
+                  {record.scoring?.map((evidence) => (
+                    <ScoringEvidenceCard
+                      key={evidence.programId}
+                      evidence={evidence}
+                      busy={busy}
+                      onVerify={() =>
+                        void run(
+                          async () => {
+                            await api(
+                              `/office/results/${record.resultId}/scoring`,
+                              {
+                                method: "POST",
+                                token: session.token,
+                                body: { programId: evidence.programId },
+                              },
+                            );
+                            await refresh();
+                          },
+                          {
+                            loading: "Generating the private score proof…",
+                            success:
+                              "The smart contract verified the scoring proof.",
+                          },
                         )
-                          return;
-                        const response = await api<{
-                          issuance: Receipt | null;
-                        }>(`/issuer/results/${record.resultId}/issue`, {
-                          method: "POST",
-                          token: session.token,
-                        });
-                        setReceipt(response.issuance);
-                        toast.success("Admission token issued. The network has confirmed it.");
-                        await refresh();
-                      })
-                    }
-                  >
-                    {busy ? "Waiting for chain…" : "Issue admission right"}
-                  </button>
-                ) : null}
-                {record.credential ? (
-                  <>
-                    <a
-                      className="button"
-                      href={`/verify/${record.credential.credentialId}`}
-                    >
-                      Public verification
-                    </a>
-                    {record.credential.lifecycle === "valid" ||
-                    record.credential.lifecycle === "enrolled"
-                      ? (["enrolled", "withdrawn", "revoked"] as const)
-                          .filter(
-                            (status) => status !== record.credential!.lifecycle,
-                          )
-                          .map((status) => (
-                            <button
-                              className="button"
-                              key={status}
-                              disabled={busy}
-                              onClick={() =>
-                                void run(async () => {
-                                  const reason = prompt(
-                                    `Reason for ${status} (stored only as a hash on chain):`,
-                                  );
-                                  if (!reason?.trim()) return;
-                                  if (
-                                    !confirm(
-                                      `Set this credential to ${status}? Withdrawn and revoked rights cannot be restored.`,
-                                    )
-                                  )
-                                    return;
-                                  const digest = await crypto.subtle.digest(
-                                    "SHA-256",
-                                    new TextEncoder().encode(reason),
-                                  );
-                                  const reasonCommitment =
-                                    "0x" +
-                                    Array.from(new Uint8Array(digest), (b) =>
-                                      b.toString(16).padStart(2, "0"),
-                                    ).join("");
-                                  const response = await api<{
-                                    transaction: Receipt | null;
-                                  }>(
-                                    `/issuer/credentials/${record.credential!.credentialId}/status`,
-                                    {
-                                      method: "POST",
-                                      token: session.token,
-                                      body: { status, reasonCommitment },
-                                    },
-                                  );
-                                  setReceipt(response.transaction);
-                                  toast.success(`Admission token ${status}. The network has confirmed the update.`);
-                                  await refresh();
-                                })
-                              }
-                            >
-                              {status}
-                            </button>
-                          ))
-                      : null}
-                  </>
-                ) : null}
-              </div>
-              {record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={() => void run(async () => {
-                await api(`/office/results/${record.resultId}/scoring`,{method:"POST",token:session.token,body:{programId:evidence.programId}});
-                await refresh();
-              },{loading:"Generating the private score proof…",success:"The smart contract verified the scoring proof."})}/>)}
-              <ReceiptView value={record.issuance ?? record.publication} />
-            </article>
-          ))}
+                      }
+                    />
+                  ))}
+                  <ReceiptView value={record.issuance ?? record.publication} />
+                </article>
+              ))}
+            </fieldset>
+          </details>
         </section>
       ) : null}
     </>
