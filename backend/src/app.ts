@@ -6,7 +6,7 @@ import { policyFromRule, versionedProgramId, scoringPolicyHash } from './zk/enco
 import { createSessionTokens } from './auth.js';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
+import { securityHeaders } from './http.js';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import type { Hex } from 'viem';
@@ -48,7 +48,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     : z.string().min(12).max(128);
   app.disable('x-powered-by');
   if(config.TRUST_PROXY_HOPS) app.set('trust proxy',config.TRUST_PROXY_HOPS);
-  app.use(helmet(), cors({ origin: config.CORS_ORIGIN }), express.json({ limit: '128kb' }));
+  app.use(securityHeaders(), cors({ origin: config.CORS_ORIGIN }), express.json({ limit: '128kb' }));
   app.use(rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.use((req,res,next)=>{if(config.DEMO_READ_ONLY&&!['GET','HEAD','OPTIONS'].includes(req.method)){res.status(403).json({error:'read_only_replay'});return;}next();});
   app.use('/v1/me', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });

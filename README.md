@@ -1,5 +1,8 @@
 # FairPass
 
+> **Current local development setup:** use http://localhost:8080 for the app, `/demo` for Demo World and `/university` for the authenticated console. Refresh the existing stack with `npm run local:refresh` from this directory. This rebuilds the app services without recreating the chain or database. The legacy 8081/8082/8083 web frontends are stopped. The older V1/Fuji setup sections below describe alternative environments; do not start those web services alongside this stack. See [Demo World instructions](docs/demo-world/EXPERIENCE.md).
+
+
 FairPass is an admission-result platform with a private student wallet, an institution workspace, and public credential verification. The frontend connects to a TypeScript API, MongoDB, and a Solidity registry on Avalanche.
 
 Students do not need MetaMask, a crypto wallet, or AVAX. The server submits transactions using institutional signers.
@@ -527,4 +530,8 @@ or transaction has been performed.
 
 ## Demo World
 
-The guided, keyless local replay is available at `http://localhost:8082/demo`. See [run instructions, verification boundaries and judging script](docs/demo-world/EXPERIENCE.md). Fuji V2 replay remains pending approved deployment; predicted addresses are not presented as deployed contracts.
+The guided, keyless local replay is available at `http://localhost:8080/demo`. See [run instructions, verification boundaries and judging script](docs/demo-world/EXPERIENCE.md). Fuji V2 replay remains pending approved deployment; predicted addresses are not presented as deployed contracts.
+
+## Railway deployment
+
+Use the root Dockerfile for one production frontend/API service. See [Railway setup and required variables](docs/deployment/RAILWAY.md). MongoDB and the configured blockchain RPC remain separate dependencies.

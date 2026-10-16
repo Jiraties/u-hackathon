@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run dev --workspace web",
     "build:web": "npm run build --workspace web",
-    "test": "npm run test --workspace web"
+    "test": "npm run test --workspace web",
+    "local:refresh": "docker compose -f compose.yaml -f compose.zk.yaml -f compose.demo.yaml up -d --no-deps --build backend presenter web"
   }
 }
