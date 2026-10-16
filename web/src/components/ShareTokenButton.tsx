@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 import { useId, useRef, useState } from "react";
 import { Icon } from "./Icon";
 export const ShareTokenButton = ({
@@ -10,11 +11,12 @@ export const ShareTokenButton = ({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [notice, setNotice] = useState("");
-  const link = `${window.location.origin}/verify/${encodeURIComponent(credentialId)}`;
+  const link = `${window.location.origin}/verify/${encodeURIComponent(credentialId)}${live ? "" : "?preview=1"}`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
       setNotice(live ? "Link copied." : "Demo link copied.");
+      toast.success(live ? "Verification link copied." : "Demo verification link copied.");
     } catch {
       setNotice("Select the link above and copy it manually.");
     }

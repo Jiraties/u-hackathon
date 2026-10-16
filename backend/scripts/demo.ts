@@ -3,7 +3,7 @@ import { keccak256, stringToHex } from 'viem';
 import { simulate } from '../src/simulator.js';
 const base = process.env.API_URL ?? 'http://127.0.0.1:3001';
 const password = process.env.DEMO_PASSWORD;
-if (!password || password.length < 12) throw new Error('Set DEMO_PASSWORD (12+ characters); use fictional accounts only');
+if (!password || (password.length < 12 && !(process.env.FAIRPASS_LOCAL === 'true' && process.env.CHAIN_ID === '31337' && password === 'password'))) throw new Error('Set DEMO_PASSWORD (12+ characters); use fictional accounts only');
 const api = async (path: string, token: string | undefined, body?: unknown) => {
   const response = await fetch(`${base}${path}`, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
   if (!response.ok) throw new Error(`${path}: ${response.status} ${await response.text()}`);

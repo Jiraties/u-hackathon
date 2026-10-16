@@ -1,0 +1,1463 @@
+{
+  "schema": 1,
+  "definitionId": "fairpass-demo-world-v1",
+  "definitionDigest": "0x00cfafd99eaf394bc45e87ef42a5d6db03913cf8026397c6d280c53a0bc14834",
+  "instanceId": "fuji-replay-001",
+  "fictional": true,
+  "institutionName": "Kasetsart University (fictional demonstration)",
+  "academicYear": 2027,
+  "round": "Round 3",
+  "allocation": {
+    "version": "authority-deferred-acceptance-rounded-hundredths-id-ascending-v1",
+    "correctness": "not_independently_verified",
+    "precision": "hundredths-half-up",
+    "tieBreak": "opaque-applicant-id-ascending"
+  },
+  "runId": "dw-fuji-replay-001-allocation-v1",
+  "rulebooks": [
+    {
+      "id": "dw-fuji-replay-001-ce-v1",
+      "programId": "dw-fuji-replay-001-ce",
+      "institutionId": "fairpass-demo",
+      "programName": "Computer Engineering · Fictional program",
+      "faculty": "Faculty of Engineering",
+      "degree": "Bachelor of Science / Engineering",
+      "academicYear": 2027,
+      "round": "Round 3",
+      "capacity": 2,
+      "version": 1,
+      "method": "normalized-weighted-sum",
+      "components": [
+        {
+          "scoreId": "tgat",
+          "label": "TGAT",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "tgat",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 20,
+          "minimumPercent": 50
+        },
+        {
+          "scoreId": "math1",
+          "label": "Mathematics 1",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "math1",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 50,
+          "minimumPercent": 60
+        },
+        {
+          "scoreId": "physics",
+          "label": "Physics",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "physics",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 30,
+          "minimumPercent": 50
+        }
+      ],
+      "requiredSubjects": [
+        "tgat",
+        "math1",
+        "physics"
+      ],
+      "qualifications": [],
+      "status": "draft",
+      "createdAt": "2026-10-16T00:00:00.000Z",
+      "sealedAt": null,
+      "commitment": null,
+      "chainReference": null,
+      "publication": null
+    },
+    {
+      "id": "dw-fuji-replay-001-ds-v1",
+      "programId": "dw-fuji-replay-001-ds",
+      "institutionId": "fairpass-demo",
+      "programName": "Data Science · Fictional program",
+      "faculty": "Faculty of Science",
+      "degree": "Bachelor of Science / Engineering",
+      "academicYear": 2027,
+      "round": "Round 3",
+      "capacity": 2,
+      "version": 1,
+      "method": "normalized-weighted-sum",
+      "components": [
+        {
+          "scoreId": "tgat",
+          "label": "TGAT",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "tgat",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 30,
+          "minimumPercent": 50
+        },
+        {
+          "scoreId": "math1",
+          "label": "Mathematics 1",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "math1",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 50,
+          "minimumPercent": 55
+        },
+        {
+          "scoreId": "physics",
+          "label": "Physics",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "physics",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 20,
+          "minimumPercent": 50
+        }
+      ],
+      "requiredSubjects": [
+        "tgat",
+        "math1",
+        "physics"
+      ],
+      "qualifications": [],
+      "status": "draft",
+      "createdAt": "2026-10-16T00:00:00.000Z",
+      "sealedAt": null,
+      "commitment": null,
+      "chainReference": null,
+      "publication": null
+    },
+    {
+      "id": "dw-fuji-replay-001-ee-v1",
+      "programId": "dw-fuji-replay-001-ee",
+      "institutionId": "fairpass-demo",
+      "programName": "Electrical Engineering · Fictional program",
+      "faculty": "Faculty of Engineering",
+      "degree": "Bachelor of Science / Engineering",
+      "academicYear": 2027,
+      "round": "Round 3",
+      "capacity": 2,
+      "version": 1,
+      "method": "normalized-weighted-sum",
+      "components": [
+        {
+          "scoreId": "tgat",
+          "label": "TGAT",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "tgat",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 20,
+          "minimumPercent": 50
+        },
+        {
+          "scoreId": "math1",
+          "label": "Mathematics 1",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "math1",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 30,
+          "minimumPercent": 55
+        },
+        {
+          "scoreId": "physics",
+          "label": "Physics",
+          "source": "demo-exam-provider",
+          "sourceComponentId": "physics",
+          "maximum": 100,
+          "transformation": "normalize-to-100",
+          "weightPercent": 50,
+          "minimumPercent": 60
+        }
+      ],
+      "requiredSubjects": [
+        "tgat",
+        "math1",
+        "physics"
+      ],
+      "qualifications": [],
+      "status": "draft",
+      "createdAt": "2026-10-16T00:00:00.000Z",
+      "sealedAt": null,
+      "commitment": null,
+      "chainReference": null,
+      "publication": null
+    }
+  ],
+  "applicants": [
+    {
+      "id": "dw-fuji-replay-001-01-arun",
+      "preferences": [
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 90,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 94,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 89,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-02-pim",
+      "preferences": [
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 88.25,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 92.5,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 85.75,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-03-mali",
+      "preferences": [
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 85,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 88,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 80,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-04-krit",
+      "preferences": [
+        "dw-fuji-replay-001-ee",
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 82,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 86,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 88,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-05-fah",
+      "preferences": [
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee",
+        "dw-fuji-replay-001-ce"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 80,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 82,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 84,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-06-beam",
+      "preferences": [
+        "dw-fuji-replay-001-ee",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ce"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 78,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 80,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 79,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-07-narin",
+      "preferences": [
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 72,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 75,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 73,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-08-dao",
+      "preferences": [
+        "dw-fuji-replay-001-ce",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ee"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 49,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 93,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 90,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    },
+    {
+      "id": "dw-fuji-replay-001-09-ton",
+      "preferences": [
+        "dw-fuji-replay-001-ee",
+        "dw-fuji-replay-001-ds",
+        "dw-fuji-replay-001-ce"
+      ],
+      "qualifications": {},
+      "scores": [
+        {
+          "id": "tgat",
+          "subject": "tgat",
+          "label": "tgat",
+          "score": 75,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "math1",
+          "subject": "math1",
+          "label": "math1",
+          "score": 49,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        },
+        {
+          "id": "physics",
+          "subject": "physics",
+          "label": "physics",
+          "score": 85,
+          "maximum": 100,
+          "provenance": "simulated-exam-provider"
+        }
+      ]
+    }
+  ],
+  "expected": [
+    {
+      "studentId": "dw-fuji-replay-001-01-arun",
+      "name": "Arun",
+      "programId": "dw-fuji-replay-001-ce",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 91.7,
+          "rawTotal": 91.7,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 18
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 94,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 47
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 89,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 26.7
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 91.8,
+          "rawTotal": 91.8,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 27
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 94,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 47
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 89,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17.8
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 90.7,
+          "rawTotal": 90.7,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 18
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 94,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 28.2
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 89,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 44.5
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-02-pim",
+      "name": "Pim",
+      "programId": "dw-fuji-replay-001-ce",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 89.63,
+          "rawTotal": 89.625,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 88.25,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17.65
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 92.5,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 46.25
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85.75,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 25.725
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 89.88,
+          "rawTotal": 89.875,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 88.25,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 26.474999999999998
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 92.5,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 46.25
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85.75,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17.150000000000002
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 88.28,
+          "rawTotal": 88.275,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 88.25,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17.65
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 92.5,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 27.75
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85.75,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 42.875
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-03-mali",
+      "name": "Mali",
+      "programId": "dw-fuji-replay-001-ds",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 85,
+          "rawTotal": 85,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 44
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 24
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 85.5,
+          "rawTotal": 85.5,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 25.5
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 44
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 83.4,
+          "rawTotal": 83.4,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 26.4
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 40
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-04-krit",
+      "name": "Krit",
+      "programId": "dw-fuji-replay-001-ee",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 85.8,
+          "rawTotal": 85.8,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16.4
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 86,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 43
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 26.4
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 85.2,
+          "rawTotal": 85.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 24.599999999999998
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 86,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 43
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17.6
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 86.2,
+          "rawTotal": 86.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16.4
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 86,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 25.8
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 88,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 44
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-05-fah",
+      "name": "Fah",
+      "programId": "dw-fuji-replay-001-ds",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 82.2,
+          "rawTotal": 82.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 41
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 84,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 25.2
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 81.8,
+          "rawTotal": 81.8,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 24
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 41
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 84,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16.8
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 82.6,
+          "rawTotal": 82.6,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 16
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 82,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 24.599999999999998
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 84,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 42
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-06-beam",
+      "name": "Beam",
+      "programId": "dw-fuji-replay-001-ee",
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 79.3,
+          "rawTotal": 79.30000000000001,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 78,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 15.600000000000001
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 40
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 79,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 23.700000000000003
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 79.2,
+          "rawTotal": 79.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 78,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 23.400000000000002
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 40
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 79,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 15.8
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 79.1,
+          "rawTotal": 79.1,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 78,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 15.600000000000001
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 80,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 24
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 79,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 39.5
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-07-narin",
+      "name": "Narin",
+      "programId": null,
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 73.8,
+          "rawTotal": 73.8,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 72,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 14.399999999999999
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 37.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 73,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 21.9
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 73.7,
+          "rawTotal": 73.69999999999999,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 72,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 21.599999999999998
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 37.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 73,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 14.6
+            }
+          ],
+          "eligible": true
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 73.4,
+          "rawTotal": 73.4,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 72,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 14.399999999999999
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 22.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 73,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 36.5
+            }
+          ],
+          "eligible": true
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-08-dao",
+      "name": "Dao",
+      "programId": null,
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 83.3,
+          "rawTotal": 83.3,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 9.8
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 93,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 46.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 27
+            }
+          ],
+          "eligible": false
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 79.2,
+          "rawTotal": 79.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 14.7
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 93,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 46.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 18
+            }
+          ],
+          "eligible": false
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 82.7,
+          "rawTotal": 82.7,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 9.8
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 93,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 27.900000000000002
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 90,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 45
+            }
+          ],
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "studentId": "dw-fuji-replay-001-09-ton",
+      "name": "Ton",
+      "programId": null,
+      "calculations": [
+        {
+          "programId": "dw-fuji-replay-001-ce",
+          "status": "calculated",
+          "total": 65,
+          "rawTotal": 65,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 15
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 24.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 25.5
+            }
+          ],
+          "eligible": false
+        },
+        {
+          "programId": "dw-fuji-replay-001-ds",
+          "status": "calculated",
+          "total": 64,
+          "rawTotal": 64,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 22.5
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 24.5
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 17
+            }
+          ],
+          "eligible": false
+        },
+        {
+          "programId": "dw-fuji-replay-001-ee",
+          "status": "calculated",
+          "total": 72.2,
+          "rawTotal": 72.2,
+          "terms": [
+            {
+              "subject": "tgat",
+              "label": "TGAT",
+              "score": 75,
+              "maximum": 100,
+              "weightPercent": 20,
+              "contribution": 15
+            },
+            {
+              "subject": "math1",
+              "label": "Mathematics 1",
+              "score": 49,
+              "maximum": 100,
+              "weightPercent": 30,
+              "contribution": 14.7
+            },
+            {
+              "subject": "physics",
+              "label": "Physics",
+              "score": 85,
+              "maximum": 100,
+              "weightPercent": 50,
+              "contribution": 42.5
+            }
+          ],
+          "eligible": false
+        }
+      ]
+    }
+  ]
+}

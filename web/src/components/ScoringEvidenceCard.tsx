@@ -1,0 +1,15 @@
+import { Icon } from "./Icon";
+import type { ScoringEvidence } from "../services/api";
+export const ScoringEvidenceCard = ({ evidence, onVerify, busy = false }: { evidence: ScoringEvidence; onVerify?: () => void; busy?: boolean }) => {
+  const verified = evidence.status === "verified";
+  return <section className="scoring-evidence-card" aria-label="Private score verification">
+    <div className="scoring-evidence-heading"><span className="publication-symbol"><Icon name="shield" size={23}/></span><div><span className="publication-caption">{evidence.programName ?? "Private score verification"}</span><h3>{verified ? "Your calculation has been checked." : "Check the rules without sharing your scores."}</h3></div><span className={`badge ${verified ? "badge-blue" : ""}`}>{verified ? "ZK proof verified" : "Not yet verified"}</span></div>
+    <p>The proof checks that your scores belong to the authorized fictional exam dataset and that the published scoring rules were applied correctly.</p>
+    <ol className="scoring-proof-path"><li>Private scores</li><li>ZK proof</li><li>Blockchain verification</li><li>Checkable result</li></ol>
+    <p className="fine-print">Your scores stay private. The smart contract checks the proof and records a blinded reference to the calculated total.</p>
+    {verified ? <dl className="publication-facts"><div><dt>Calculated score</dt><dd>{evidence.calculatedScore?.toFixed(2) ?? "Unavailable"}</dd></div><div><dt>Eligibility</dt><dd>{evidence.eligible ? "Requirements met" : "Requirements not met"}</dd></div><div><dt>Rulebook version</dt><dd>{evidence.ruleVersion}</dd></div></dl> : <p>{evidence.reason ?? "An authorized exam record and a supported published rulebook are needed before a proof can be checked."}</p>}
+    {!verified && onVerify ? <button className="button button-secondary" disabled={busy} onClick={onVerify}>{busy ? "Generating and checking proof…" : "Verify private scoring"}<Icon name="arrow" size={16}/></button> : null}
+    {verified ? <details className="publication-evidence"><summary>View blockchain evidence</summary><p>Dataset: <code>{evidence.datasetId}</code></p><p>Blinded total reference: <code>{evidence.totalCommitment}</code></p>{evidence.verification ? <div><p>Confirmed in block {evidence.verification.blockNumber}. Transaction: <code>{evidence.verification.transactionHash}</code></p>{[43113,43114].includes(evidence.verification.chainId) ? <a className="text-link" target="_blank" rel="noreferrer" href={`${evidence.verification.chainId===43113?"https://testnet.snowtrace.io":"https://snowtrace.io"}/tx/${evidence.verification.transactionHash}`}>Open transaction receipt <Icon name="external" size={14}/></a> : null}</div> : <p>The contract’s scoring claim was read directly. A transaction receipt is unavailable.</p>}</details> : null}
+    <p className="scoring-allocation-note">This verifies scoring and the supported eligibility rules. The admission decision comes from the admissions authority. The complete allocation has not been independently verified.</p>
+  </section>;
+};

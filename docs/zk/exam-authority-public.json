@@ -1,0 +1,7 @@
+{
+  "address": "0x0DAb99513565fB9aDC87E32B02e81bA6831019f4",
+  "keyFile": "backend/.secrets/exam-authority.fuji-1792120265226.env",
+  "chainId": 43113,
+  "distinctFromConfiguredRoles": true,
+  "transactionsSubmitted": 0
+}

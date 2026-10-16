@@ -1,0 +1,38 @@
+{
+  "roles": {
+    "admin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "allocationAuthority": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "institutionalIssuer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "examinationAuthority": "0x0DAb99513565fB9aDC87E32B02e81bA6831019f4"
+  },
+  "chainId": 43113,
+  "network": "Avalanche Fuji",
+  "contracts": [
+    {
+      "name": "RelationsLib",
+      "unlinkedBytecodeSha256": "f52c773450ce3610ab5125f30775aa555c3f76742ad5c618ca1aba5a7cf79407"
+    },
+    {
+      "name": "ZKTranscriptLib",
+      "unlinkedBytecodeSha256": "2288eed256826ff792a9e07441676543a56b8f551da0c931627b9ec9340cb0ed"
+    },
+    {
+      "name": "HonkVerifier",
+      "unlinkedBytecodeSha256": "982cafcffa130af5fb5493313958f414244ece56d341fafea0bfc1e84e9cf582"
+    },
+    {
+      "name": "FairPassRegistryV2",
+      "unlinkedBytecodeSha256": "5b2039271ee2e80d6e0e0d097ebb3d1e061a1c64035595c1e9aeff3fa75a164e"
+    }
+  ],
+  "circuitVerificationKeySha256": "be399a1f2adfbac473dc05078dd8563c5ce20997b49b260aab8700276b1bba2f",
+  "actions": [
+    "Deploy two generated verifier libraries",
+    "Deploy the circuit-specific, immutable ZK Honk verifier",
+    "Deploy a new v2 registry with allocation and examination authority roles",
+    "Authorize the configured institutional issuer on the new registry"
+  ],
+  "migration": "Existing v1 deployment, rights and database remain untouched. Use a separate v2 database and new rulebook publications.",
+  "externalTransactionsSubmitted": 0,
+  "status": "Not deployed; external deployment and role grants require explicit approval."
+}

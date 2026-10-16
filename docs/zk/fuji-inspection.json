@@ -1,0 +1,18 @@
+{
+  "inspectedAt": "2026-10-16T03:08:15.930Z",
+  "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+  "chainId": 43113,
+  "address": "0x55e5eee9feb02b6e4b534b1b0d1ea8ea61eb2955",
+  "codeBytes": 9507,
+  "latestBlock": "59535607",
+  "blockGasLimit": "32000000",
+  "probes": {
+    "protocolVersion()": {
+      "reverted": true
+    },
+    "scoringVerifier()": {
+      "reverted": true
+    }
+  },
+  "externalTransactionsSubmitted": 0
+}

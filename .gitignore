@@ -4,3 +4,15 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+
+# ZK public build artifacts are regenerated; private witness files never belong in Git.
+zk/**/target/
+**/Prover.toml
+**/*.wtns
+**/*witness*
+backend/artifacts/
+backend/cache/
+backend/deployments/
+
+# Local deployment signing keys (never commit).
+backend/.secrets/

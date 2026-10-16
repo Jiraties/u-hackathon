@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-16T03:49:39.172Z",
+  "chainId": 43113,
+  "block": "59537199",
+  "gasPriceWei": "160",
+  "accounts": [
+    {
+      "role": "admin",
+      "address": "0xbfcD72d5ab7fB315c4987be0841A05cCA530c07a",
+      "nonce": 0,
+      "balanceWei": "0"
+    },
+    {
+      "role": "allocationAuthority",
+      "address": "0x2e521A6633Ee57098eFa921737110572Cfc32130",
+      "nonce": 0,
+      "balanceWei": "0"
+    },
+    {
+      "role": "institutionalIssuer",
+      "address": "0x8eC231709e282a154f39f86717E1090D297f2A38",
+      "nonce": 0,
+      "balanceWei": "0"
+    },
+    {
+      "role": "examinationAuthority",
+      "address": "0x57533C6203891f2d84507Ad70DB1AA5fE5b1ea0b",
+      "nonce": 0,
+      "balanceWei": "0"
+    }
+  ],
+  "externalTransactionsSubmitted": 0
+}

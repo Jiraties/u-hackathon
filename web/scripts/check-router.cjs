@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+// check-admission-results installs the existing TypeScript loader.
+const { resolveAppUrl, replaceRoute, shouldHandleLink } = require('../src/router.ts');
+const current = 'http://localhost:8080/student/wallet?preview=1&demo=not-admitted';
+assert.equal(resolveAppUrl('/university', current).search, '?preview=1');
+assert.equal(resolveAppUrl('/transparency?program=thai', current).search, '?program=thai&preview=1');
+assert.equal(resolveAppUrl('/verify/ABC?preview=0', current).search, '?preview=0');
+assert.equal(resolveAppUrl('https://www.mytcas.com/', current).search, '');
+assert.equal(resolveAppUrl('/verify/ABC', 'http://localhost:8080/university').search, '');
+const oldWindow = global.window;
+let replacement;
+global.window = { location: new URL(current), history: { state: { retained: true }, replaceState: (...args) => { replacement = args; } } };
+replaceRoute('/verify/ABC');
+assert.deepEqual(replacement, [{ retained: true }, '', '/verify/ABC?preview=1']);
+const event = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false };
+const anchor = (href, target = '', download = false) => ({ href: new URL(href, current).href, target, rel: '', hasAttribute: name => name === 'download' && download, getAttribute: () => href });
+assert.equal(shouldHandleLink(event, anchor('/university')), true);
+assert.equal(shouldHandleLink(event, anchor('/transparency?program=thai')), true);
+for (const modifier of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey', 'defaultPrevented']) assert.equal(shouldHandleLink({ ...event, [modifier]: true }, anchor('/university')), false);
+assert.equal(shouldHandleLink({ ...event, button: 1 }, anchor('/university')), false);
+for (const link of [anchor('/verify', '_blank'), anchor('/verify', '', true), anchor('https://www.mytcas.com/'), anchor('#result-trace'), anchor('/api/health')]) assert.equal(shouldHandleLink(event, link), false);
+if (oldWindow === undefined) delete global.window; else global.window = oldWindow;
+console.log('Router checks passed: internal navigation, preview URLs, URL replacement, native anchors and browser modifiers.');

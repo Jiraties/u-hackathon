@@ -17,7 +17,7 @@ x-local-env: &local-env
   ADMIN_API_TOKEN: fairpass-local-admin-token-not-for-public-use
   INTEGRATION_API_TOKEN: fairpass-local-integration-token-not-for-public-use
   ISSUER_API_TOKEN: fairpass-local-issuer-token-not-for-public-use
-  DEMO_PASSWORD: fairpass-local-fictional-password
+  DEMO_PASSWORD: password
   API_URL: http://backend:3001
 
 services:

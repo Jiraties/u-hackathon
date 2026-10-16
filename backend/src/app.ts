@@ -1,3 +1,8 @@
+import { loadReplayManifest, scenarioProjection, PERSPECTIVES } from './demo/replay.js';
+import { DEFINITION_ID } from './demo/scenario.js';
+import { ScoringService } from './zk/service.js';
+import { policyFromRule, versionedProgramId, scoringPolicyHash } from './zk/encoding.js';
+import { createSessionTokens } from './auth.js';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -30,10 +35,20 @@ const bearer = (req: Request) => req.headers.authorization?.match(/^Bearer (\S+)
 const statuses = ['not_found', 'valid', 'valid', 'withdrawn', 'revoked'] as const;
 export function createApp(config: Config, store: Store, chain: ChainGateway) {
   const app = express();
+  const sessionTokens = createSessionTokens(config);
+  const scoring = new ScoringService(store, chain);
+  app.locals.closeScoring = () => scoring.close();
+  const replayManifest = loadReplayManifest(config.DEMO_REPLAY_MANIFEST);
+  const zkEnabled = config.REGISTRY_VERSION === 2;
+  const localDemo = process.env.FAIRPASS_LOCAL === 'true' && config.CHAIN_ID === 31337;
+  const provisionPassword = localDemo
+    ? z.union([z.string().min(12).max(128), z.literal('password')])
+    : z.string().min(12).max(128);
   app.disable('x-powered-by');
   if(config.TRUST_PROXY_HOPS) app.set('trust proxy',config.TRUST_PROXY_HOPS);
   app.use(helmet(), cors({ origin: config.CORS_ORIGIN }), express.json({ limit: '128kb' }));
   app.use(rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
+  app.use((req,res,next)=>{if(config.DEMO_READ_ONLY&&!['GET','HEAD','OPTIONS'].includes(req.method)){res.status(403).json({error:'read_only_replay'});return;}next();});
   app.use('/v1/me', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   const operator = (token: string) => (req: Request, _res: Response, next: NextFunction) => {
     if (!safeEqual(bearer(req), token)) return next(new HttpError(401, 'unauthorized'));
@@ -41,6 +56,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   };
   const student = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!await sessionTokens.valid(bearer(req), 'student')) fail(401, 'unauthorized');
       const session = await store.sessions.findOne({ _id: tokenHash(bearer(req)), expiresAt: { $gt: new Date() } });
       if (!session || session.role === 'institution') fail(401, 'unauthorized');
       res.locals.studentId = session.studentId; next();
@@ -69,6 +85,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   const metadata=(d:import('./store.js').ProgramDoc|null)=>d?{institutionName:config.INSTITUTION_NAME??'Example University',programName:d.rulebook?.programName??'Registered program',faculty:d.rulebook?.faculty,rulebookId:d.rulebook?.id,degree:d.rulebook?.degree}:null;
   const office = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!await sessionTokens.valid(bearer(req), 'institution')) fail(401, 'institution_login_required');
       const session = await store.sessions.findOne({ _id: tokenHash(bearer(req)), role: 'institution', institutionId, expiresAt: { $gt: new Date() } });
       if (!session) fail(401, 'institution_login_required');
       res.locals.institutionId = session.institutionId;
@@ -84,7 +101,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   };
   app.use('/v1/office', (_req, res, next) => { res.setHeader('Cache-Control','no-store'); next(); });
   app.post('/v1/admin/operators', operator(config.ADMIN_API_TOKEN), async (req, res) => {
-    const input = z.object({ operatorId:id, name:z.string().min(1).max(200), institutionId:id, password:z.string().min(12).max(128) }).strict().parse(req.body);
+    const input = z.object({ operatorId:id, name:z.string().min(1).max(200), institutionId:id, password:provisionPassword }).strict().parse(req.body);
     if (input.institutionId !== institutionId) fail(403, 'institution_not_configured');
     await store.operators.insertOne({_id:input.operatorId,name:input.name,institutionId,passwordHash:await passwordHash(input.password)});
     res.status(201).json({operatorId:input.operatorId,institutionId});
@@ -94,7 +111,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const record=await store.operators.findOne({_id:input.operatorId,institutionId});
     const valid=record ? await passwordMatches(input.password,record.passwordHash) : (await passwordHash(input.password),false);
     if(!valid) fail(401,'invalid_credentials');
-    const token=randomId(), expiresAt=new Date(Date.now()+8*60*60000);
+    const { token, expiresAt } = await sessionTokens.issue('institution');
     await store.sessions.insertOne({_id:tokenHash(token),studentId:input.operatorId,role:'institution',institutionId,expiresAt});
     res.setHeader('Cache-Control','no-store'); res.json({token,expiresAt,institutionId,name:record!.name});
   });
@@ -156,7 +173,10 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     if(rule.institutionId !== res.locals.institutionId) fail(403,'program_outside_institution');
     const errors=validateRulebook(rule); if(errors.length) fail(400,'invalid_rulebook');
     // Version is deliberately excluded: a new version cannot mint another seat pool.
-    const programId=rulesCommitment({scheme:'fairpass-intake-v1',institutionId:rule.institutionId,programId:rule.programId,academicYear:rule.academicYear,round:rule.round});
+    const intakeId=rulesCommitment({scheme:'fairpass-intake-v1',institutionId:rule.institutionId,programId:rule.programId,academicYear:rule.academicYear,round:rule.round});
+    let policy:ReturnType<typeof policyFromRule>|undefined;
+    if(zkEnabled){try{policy=policyFromRule(rule,intakeId);}catch{fail(400,'zk_unsupported_policy');}}
+    const programId=policy?versionedProgramId(policy):intakeId;
     const rulesHash=await rulebookCommitment(rule) as Hex;
     const output=await workflow(async()=>{
       const draft=await store.drafts.findOne({_id:`${res.locals.institutionId}:${rule.id}`});
@@ -169,7 +189,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       }
       const p=await chain.read('programs',[programId]);
       if(p[0] === '0x0000000000000000000000000000000000000000') {
-        const registration=await chain.write('issuer','registerProgram',[programId,rule.academicYear,rule.capacity,rulesHash]);
+        const registration=policy ? await chain.write('issuer','registerScoringProgram',[programId,rule.academicYear,rule.capacity,rulesHash,policy]) : await chain.write('issuer','registerProgram',[programId,rule.academicYear,rule.capacity,rulesHash]);
         await store.programs.updateOne({_id:programId},{$set:{registration}});
       } else if(p[6] !== rulesHash || p[0].toLowerCase() !== chain.issuer.toLowerCase() || p[1] !== rule.academicYear || p[2] !== rule.capacity) fail(409,'onchain_program_conflict');
       if((await chain.read('programs',[programId]))[7] === 0n) {
@@ -181,7 +201,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       if(locked[7] === 0n || locked[6] !== rulesHash) fail(409,'rules_not_locked');
       const publishedRulebook:AdmissionRulebook={...rule,status:'published',commitment:rulesHash,sealedAt:new Date(Number(locked[7])*1000).toISOString(),chainReference:current.lock ?? null,publication:{issuerAuthenticated:true,inclusionVerified:true,commitmentMatches:true,publishedAt:new Date(Number(locked[7])*1000).toISOString()}};
       await store.programs.updateOne({_id:programId},{$set:{rulebook:publishedRulebook,rules:publishedRulebook}});
-      return {programId,rulesHash,rulebook:publishedRulebook,registration:current.registration ?? null,lock:current.lock ?? null,...chain.info};
+      return {programId,rulesHash,scoringRulesHash:policy?scoringPolicyHash(rule.academicYear,rule.capacity,policy):null,rulebook:publishedRulebook,registration:current.registration ?? null,lock:current.lock ?? null,...chain.info};
     });
     res.status(201).json(output);
   });
@@ -192,7 +212,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       resultId:d.resultId,studentId:d.studentId,outcome:d.report.outcome,programId:d.report.programId,
       confirmationRequestedAt:d.confirmationRequestedAt ?? null,
       credential:await chain.read('credential',[d.credentialId]).then(c=>c[1]?{credentialId:d.credentialId,status:statuses[c[1]],lifecycle:c[1]===2?'enrolled':statuses[c[1]]}:null),
-      publication:d.publication ?? null,issuance:d.issuance ?? null
+      publication:d.publication ?? null,issuance:d.issuance ?? null, scoring:await scoring.evidence(d)
     }))));
   });
   const scoreSchema=z.object({id,subject:z.string().max(100),label:z.string().max(100),score:z.number().nonnegative(),maximum:z.number().positive(),provenance:z.literal('simulated-exam-provider')}).strict().refine(s=>s.score<=s.maximum,'Score exceeds maximum');
@@ -216,15 +236,18 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       const rules=programs.map(p=>p.rulebook!);
       if(rules.some(r=>r.academicYear!==rules[0].academicYear || r.round!==rules[0].round)) fail(400,'mixed_cycles');
       for(const applicant of input.applicants) if(!await store.students.findOne({_id:applicant.id})) fail(404,'student_not_found');
-      for(const applicant of input.applicants) for(const logical of applicant.preferences) {
+      const authenticated = zkEnabled ? await scoring.cohort(rules,input.applicants) : null;
+      const applicants = authenticated?.applicants ?? input.applicants;
+      if(run && authenticated && (run.authenticatedInput?.datasetId!==authenticated.datasetId || run.authenticatedInput.datasetRoot!==authenticated.datasetRoot))fail(409,'run_dataset_conflict');
+      for(const applicant of applicants) for(const logical of applicant.preferences) {
         const rule=rules.find(r=>r.programId===logical);
         if(!rule || evaluateRulebook(rule,applicant.scores,applicant.qualifications).status !== 'calculated') fail(400,'invalid_applicant_scores_or_preferences');
       }
       let assignments:Record<string,string|null>;
-      try { assignments=allocatePreview(rules,input.applicants); } catch { fail(400,'invalid_cohort'); }
+      try { assignments=allocatePreview(rules,applicants,{scorePrecision:zkEnabled?'hundredths-half-up':'unrounded'}); } catch { fail(400,'invalid_cohort'); }
       if(!run) {
         if(programs.some(p=>p.simulationRunId&&p.simulationRunId!==input.runId)) fail(409,'intake_already_processed');
-        run={_id:input.runId,inputHash,institutionId,programIds:input.programIds,rulebooks:rules,applicants:input.applicants,assignments,createdAt:new Date()};
+        run={_id:input.runId,inputHash,institutionId,programIds:input.programIds,rulebooks:rules,applicants,assignments,authenticatedInput:authenticated?{datasetId:authenticated.datasetId,datasetRoot:authenticated.datasetRoot,datasetVersion:authenticated.datasetVersion,precision:authenticated.precision}:undefined,createdAt:new Date()};
         await store.runs.insertOne(run);
       }
       // Claim all intakes before any result broadcast. Retry resumes the same run.
@@ -258,10 +281,15 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     res.status(201).json(output);
   });
 
+  app.get('/v1/demo/scenarios/:definition/:perspective',async(req,res)=>{
+    if(req.params.definition!==DEFINITION_ID){res.status(404).json({error:'scenario_not_found'});return;}
+    const perspective=z.enum(PERSPECTIVES).parse(req.params.perspective);
+    res.json(scenarioProjection(perspective,replayManifest?.instanceId??'preparation',replayManifest));
+  });
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/ready', async (_req, res) => { await store.ping(); await chain.ready(); res.json({ status: 'ready', ...chain.info }); });
   app.post('/v1/admin/students', operator(config.ADMIN_API_TOKEN), async (req, res) => {
-    const input = z.object({ studentId: id, name: z.string().min(1).max(200), password: z.string().min(12).max(128) }).strict().parse(req.body);
+    const input = z.object({ studentId: id, name: z.string().min(1).max(200), password: provisionPassword }).strict().parse(req.body);
     await store.students.insertOne({ _id: input.studentId, name: input.name, passwordHash: await passwordHash(input.password) });
     res.status(201).json({ studentId: input.studentId });
   });
@@ -271,7 +299,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     // Equalize expensive password work for unknown accounts.
     const valid = record ? await passwordMatches(input.password, record.passwordHash) : (await passwordHash(input.password), false);
     if (!valid) fail(401, 'invalid_credentials');
-    const token = randomId(); const expiresAt = new Date(Date.now() + 8 * 60 * 60000);
+    const { token, expiresAt } = await sessionTokens.issue('student');
     await store.sessions.insertOne({ _id: tokenHash(token), studentId: input.studentId, expiresAt });
     res.setHeader('Cache-Control', 'no-store'); res.json({ token, expiresAt });
   });
@@ -279,6 +307,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     await store.sessions.deleteOne({ _id: tokenHash(bearer(req)) }); res.sendStatus(204);
   });
   app.post('/v1/issuer/programs', operator(config.ISSUER_API_TOKEN), async (req, res) => {
+    if(zkEnabled)fail(400,'use_versioned_rulebook_publication_for_zk');
     const input = z.object({ programId: nonzero, academicYear: year, capacity: z.number().int().min(1).max(100000),
       rules: z.object({ name: z.string().min(1).max(200), weights: z.record(z.string().regex(/^[a-zA-Z0-9_-]{1,40}$/), z.number().int().min(0).max(10000)), minimumScore: z.number().min(0).max(100), tieBreak: z.literal('opaque-applicant-id-ascending'), fictional: z.literal(true) }).strict()
     }).strict().refine(v => Object.values(v.rules.weights).reduce((a, b) => a + b, 0) === 10000, 'Weights must sum to 10000 basis points').parse(req.body);
@@ -335,15 +364,33 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const records = await Promise.all(docs.map(async d => ({ resultId: d.resultId, report: d.report, program:metadata(d.report.programId?await store.programs.findOne({_id:d.report.programId}):null),
       commitment: d.commitment, confirmationRequestedAt: d.confirmationRequestedAt ?? null,
       publication:d.publication ?? null, issuance:d.issuance ?? null,
+      scoring:await scoring.evidence(d),
       credential: await chain.read('credential', [d.credentialId]).then(c => c[1] ? { credentialId: d.credentialId, programId: c[0], status: statuses[c[1]], lifecycle:c[1] === 2 ? 'enrolled' : statuses[c[1]] } : null) })));
     res.json({ institutionName:config.INSTITUTION_NAME??'Example University', student: { id: profile!._id, name: profile!.name }, records, ...chain.info });
   });
+  app.post('/v1/me/results/:id/scoring',student,async(req,res)=>{
+    const doc=await resultForStudent(req,res);
+    const input=z.object({programId:nonzero}).strict().parse(req.body);
+    if(!doc.report.preferences.includes(input.programId))fail(403,'program_outside_result');
+    if(!zkEnabled)fail(409,'zk_registry_upgrade_required');
+    res.json(await scoring.verify(doc,input.programId));
+  });
+  app.post('/v1/office/results/:id/scoring',office,async(req,res)=>{
+    const input=z.object({programId:nonzero}).strict().parse(req.body);
+    await requireProgramScope(res,input.programId);
+    const doc=await store.results.findOne({resultId:nonzero.parse(req.params.id)});
+    if(!doc||!doc.report.preferences.includes(input.programId))fail(404,'result_not_found');
+    if(!zkEnabled)fail(409,'zk_registry_upgrade_required');
+    res.json(await scoring.verify(doc,input.programId));
+  });
+  app.get('/v1/public/capabilities',async(_req,res)=>res.json({registryVersion:zkEnabled?2:1,scoringProofs:zkEnabled,verifier:zkEnabled?await chain.read('scoringVerifier'):null,supportedPolicy:zkEnabled?'three-exam-subjects-100-point-scales-two-decimals-no-curriculum':null,...chain.info}));
   app.get('/v1/me/results/:id/proof', student, async (req, res) => {
     const doc = await resultForStudent(req, res);
     const [value, recordedAt] = await chain.read('resultCommitment', [doc.resultId]);
     res.json({ resultId: doc.resultId, report: doc.report, salt: doc.salt, scheme: 'fairpass-result-v1',
       verification: { resultIntegrity: recordedAt !== 0n && value === commitment(doc.report, doc.salt) ? 'verified' : 'not_verified',
         scoreAuthenticity: 'not_verified', allocationCorrectness: 'not_verified' },
+      scoring:await scoring.evidence(doc),
       onchainCommitment: value, recordedAt: String(recordedAt), publication: doc.publication ?? null, ...chain.info });
   });
   app.post('/v1/me/results/:id/confirm', student, async (req, res) => {
@@ -363,6 +410,10 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
       const program = await chain.read('programs', [doc.report.programId]);
       if (program[0].toLowerCase() !== chain.issuer.toLowerCase()) fail(403, 'wrong_issuer');
       await publish(doc);
+      if(zkEnabled) {
+        const evidence=await scoring.evidence(doc);
+        if(!evidence.some(e=>e.programId===doc.report.programId && e.status==='verified' && 'eligible' in e && e.eligible))fail(409,'verified_eligible_scoring_required');
+      }
       let current = await chain.read('credential', [doc.credentialId]);
       if (!current[1]) {
         // confirmResult may already have mined before a process crash. Read confirmation
@@ -398,8 +449,10 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
     const docs = await store.programs.find({}).limit(200).toArray();
     res.json(await Promise.all(docs.map(async d => {
       const p = await chain.read('programs', [d._id]);
-      return { metadata:metadata(d), programId: d._id, issuer: p[0], academicYear: p[1], capacity: p[2], active: p[3], historicalIssued: p[4], issuanceAllowance: p[5],
-        rulesHash: p[6], lockedAt: String(p[7]), rules: d.rules, rulebook:d.rulebook ?? null, registration:d.registration ?? null, lock:d.lock ?? null, rulesMatch: (d.rulebook ? await rulebookCommitment(d.rulebook) : rulesCommitment(d.rules)) === p[6], ...chain.info };
+      let scoringPolicy=null,currentRules=true,policyMatches=true;
+      if(zkEnabled){scoringPolicy=await chain.read('scoringPolicy',[d._id]);currentRules=await chain.read('intakeHead',[scoringPolicy.intake])===d._id;try{policyMatches=!!d.rulebook&&scoringPolicyHash(d.year,d.capacity,policyFromRule(d.rulebook,scoringPolicy.intake))===await chain.read('scoringRulesHash',[d._id]);}catch{policyMatches=false;}}
+      return { scoringPolicy, scoringRulesHash:zkEnabled?await chain.read('scoringRulesHash',[d._id]):null, currentRules, metadata:metadata(d), programId: d._id, issuer: p[0], academicYear: p[1], capacity: p[2], active: p[3], historicalIssued: p[4], issuanceAllowance: p[5],
+        rulesHash: p[6], lockedAt: String(p[7]), rules: d.rules, rulebook:d.rulebook ?? null, registration:d.registration ?? null, lock:d.lock ?? null, rulesMatch: policyMatches && (d.rulebook ? await rulebookCommitment(d.rulebook) : rulesCommitment(d.rules)) === p[6], ...chain.info };
     })));
   });
   app.get('/v1/public/programs/:id/events', async (req, res) => {
@@ -422,6 +475,7 @@ export function createApp(config: Config, store: Store, chain: ChainGateway) {
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof z.ZodError) { res.status(400).json({ error: 'invalid_input', issues: error.issues.map(i => ({ path: i.path, message: i.message })) }); return; }
     if (error instanceof HttpError) { res.status(error.status).json({ error: error.code }); return; }
+    if(error instanceof Error && ['authenticated_exam_record_required','result_scores_do_not_match_authenticated_exam_record','zk_existing_claim_mismatch','zk_policy_mismatch','authenticated_exam_dataset_not_current','authenticated_exam_dataset_mismatch','authenticated_exam_subject_mismatch','authenticated_cohort_requires_shared_subjects'].includes(error.message)){res.status(409).json({error:error.message});return;}
     if ((error as { code?: number }).code === 11000) { res.status(409).json({ error: 'already_exists' }); return; }
     if ((error as { status?: number }).status === 413) { res.status(413).json({ error: 'payload_too_large' }); return; }
     if ((error as { status?: number }).status === 400) { res.status(400).json({ error: 'invalid_json' }); return; }

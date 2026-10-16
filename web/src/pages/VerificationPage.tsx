@@ -1,3 +1,4 @@
+import { replaceRoute } from "../router";
 import { useState, type FormEvent } from "react";
 import type { FairPassViewData } from "../domain/models";
 import { Icon } from "../components/Icon";
@@ -27,7 +28,7 @@ export const VerificationPage = ({ data, credentialId }: { data: FairPassViewDat
     const normalized = normalizeCredentialCode(code);
     if (!normalized) { setError("Enter a token code or a FairPass verification link."); return; }
     setError(""); setInput(normalized); setCheckedCode(normalized);
-    window.history.replaceState(null, "", `/verify/${encodeURIComponent(normalized)}`);
+    replaceRoute(`/verify/${encodeURIComponent(normalized)}`);
   };
   const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); check(input); };
   const examples = [

@@ -26,7 +26,7 @@ Provisioned students + scores + ranked choices → Preview allocation
 
 ผู้ดูแล deploy registry และอนุญาต issuer ไว้ก่อนแล้ว ระบบปัจจุบันใช้ registry เดิมบน Fuji ไม่ deploy ใหม่เมื่อ build เว็บหรือ restart API
 
-ผู้ดูแล provision บัญชีนักเรียนและเจ้าหน้าที่ผ่าน server/CLI บัญชีเจ้าหน้าที่ผูกกับ `INSTITUTION_ID` เดียวและ issuer signer ที่ตั้งไว้ หลัง sign in browser ได้ bearer session อายุ 8 ชั่วโมง เก็บใน `sessionStorage` ของ tab ไม่ได้รับ private key หรือ machine API token
+ผู้ดูแล provision บัญชีนักเรียนและเจ้าหน้าที่ผ่าน server/CLI บัญชีเจ้าหน้าที่ผูกกับ `INSTITUTION_ID` เดียวและ issuer signer ที่ตั้งไว้ หลัง sign in browser ได้ signed JWT อายุ 7 วันโดยค่าเริ่มต้น เก็บใน `localStorage` และใช้งานต่อได้เมื่อเปิด browser ใหม่ ไม่ได้รับ private key หรือ machine API token
 
 หน้า live ไม่สลับนักเรียนหรือมหาวิทยาลัยแบบ fixture นักเรียนต้อง sign out แล้ว sign in ด้วยบัญชีของตัวเอง ส่วน `?preview=1` ใช้สำรวจต้นแบบได้ แต่ไม่เขียน chain และไม่ใช้แทน API เมื่อระบบขัดข้อง
 

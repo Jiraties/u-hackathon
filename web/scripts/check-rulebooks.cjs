@@ -1,5 +1,6 @@
 // Reuse the existing dependency-free TypeScript test loader and student regressions.
 require('./check-admission-results.cjs');
+require('./check-router.cjs');
 const assert = require('node:assert/strict');
 const { createRequire } = require('node:module');
 const path = require('node:path');
@@ -52,6 +53,19 @@ assert.ok(home.includes('Set the rules. Make them checkable.'));
 assert.ok(home.includes('Create rulebook'));
 assert.ok(home.includes('Issue admission tokens'));
 assert.ok(!home.includes('Confirmed on-chain'));
+const {RuleScoringEditor,RuleEligibilityEditor}=require('../src/components/RuleEditors.tsx');
+const editor=renderToStaticMarkup(React.createElement(RuleScoringEditor,{rule:base,onChange(){}}));
+assert.ok(editor.includes('component-editor'));
+assert.ok(editor.includes('type="range"'));
+assert.ok(editor.includes('TGAT weight slider'));
+assert.ok(editor.includes('Score maximum'));
+assert.ok(editor.includes('A-LEVEL-MATH1'));
+assert.ok(editor.includes('Score composition'));
+const eligibilityEditor=renderToStaticMarkup(React.createElement(RuleEligibilityEditor,{rule:base,onChange(){}}));
+assert.ok(eligibilityEditor.includes('Required subjects'));
+assert.ok(eligibilityEditor.includes('minimum percentage'));
+assert.ok(eligibilityEditor.includes('Science–Mathematics'));
+
 (async()=>{
   globalThis.crypto ??= require('node:crypto').webcrypto;
   const prepared=await sealPreviewRulebook(draft,'2026-10-16T02:00:00Z');
@@ -94,3 +108,12 @@ assert.ok(!home.includes('Confirmed on-chain'));
   assert.equal(ruleIsOnChain(prepared),false);
   console.log('Rulebook checks passed: validation, scales, eligibility, canonical hashes, historical versions, capacity, ties and preference matching.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Verification badges stay tied to returned proof evidence, including ineligible results.
+const {ScoringEvidenceCard}=require('../src/components/ScoringEvidenceCard.tsx');
+const renderEvidence=(evidence)=>webRequire('react-dom/server').renderToStaticMarkup(webRequire('react').createElement(ScoringEvidenceCard,{evidence}));
+assert.ok(!renderEvidence({programId:'example',status:'not_verified'}).includes('ZK proof verified'));
+const ineligibleEvidence=renderEvidence({programId:'example',status:'verified',eligible:false,calculatedScore:59.8,ruleVersion:1});
+assert.ok(ineligibleEvidence.includes('ZK proof verified'));
+assert.ok(ineligibleEvidence.includes('Requirements not met'));
+assert.ok(ineligibleEvidence.includes('complete allocation has not been independently verified'));

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "chainId": 43113,
+  "network": "Avalanche Fuji",
+  "purpose": "fictional Demo World V2 only",
+  "createdAt": "2026-10-16T03:45:12.953Z",
+  "roles": {
+    "admin": {
+      "address": "0xbfcD72d5ab7fB315c4987be0841A05cCA530c07a",
+      "secretFile": "backend/.secrets/demo-world-fuji/admin.env"
+    },
+    "allocationAuthority": {
+      "address": "0x2e521A6633Ee57098eFa921737110572Cfc32130",
+      "secretFile": "backend/.secrets/demo-world-fuji/allocationAuthority.env"
+    },
+    "institutionalIssuer": {
+      "address": "0x8eC231709e282a154f39f86717E1090D297f2A38",
+      "secretFile": "backend/.secrets/demo-world-fuji/institutionalIssuer.env"
+    },
+    "examinationAuthority": {
+      "address": "0x57533C6203891f2d84507Ad70DB1AA5fE5b1ea0b",
+      "secretFile": "backend/.secrets/demo-world-fuji/examinationAuthority.env"
+    }
+  },
+  "externalTransactionsSubmitted": 0
+}

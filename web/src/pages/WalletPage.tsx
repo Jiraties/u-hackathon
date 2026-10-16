@@ -1,3 +1,4 @@
+import { replaceRoute } from "../router";
 import { useId, useRef, useState } from "react";
 import type { FairPassViewData } from "../domain/models";
 import { Icon } from "../components/Icon";
@@ -52,7 +53,7 @@ export const WalletPage = ({ data }: { data: FairPassViewData }) => {
       const url = new URL(window.location.href);
       if (next?.admission.status === "not_admitted") url.searchParams.set("demo", "not-admitted");
       else url.searchParams.delete("demo");
-      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      replaceRoute(url.pathname + url.search + url.hash);
     }}>{data.demoWallets.map(item => <option key={item.student.id} value={item.student.id}>{item.student.givenName} · {item.admission.status === "not_admitted" ? "Not admitted" : "Admitted"}</option>)}</select></label></section>
   </>;
 };

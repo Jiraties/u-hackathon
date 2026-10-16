@@ -1,0 +1,23 @@
+# Isolated local proof demo. No existing FairPass containers/volumes are replaced.
+# docker compose -f compose.yaml -f compose.zk.yaml up -d --build
+name: fairpass-zk
+services:
+  web:
+    ports: !override
+      - '127.0.0.1:${ZK_WEB_PORT:-8081}:8080'
+  chain:
+    ports: !override
+      - '127.0.0.1:${ZK_CHAIN_PORT:-18547}:8545'
+  init:
+    environment:
+      REGISTRY_VERSION: '2'
+    command: [docker/init-zk-local.mjs]
+  backend:
+    environment:
+      REGISTRY_VERSION: '2'
+      CORS_ORIGIN: http://localhost:${ZK_WEB_PORT:-8081}
+      INSTITUTION_NAME: Kasetsart University (fictional demonstration)
+  tools:
+    environment:
+      REGISTRY_VERSION: '2'
+      INSTITUTION_NAME: Kasetsart University (fictional demonstration)

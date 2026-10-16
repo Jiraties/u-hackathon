@@ -105,7 +105,7 @@ export async function browserJourney({
     .first()
     .click();
   await student
-    .getByRole("heading", { name: "Result integrity: verified", exact: true })
+    .getByRole("heading", { name: "Your result record is verified", exact: true })
     .waitFor();
   await student.keyboard.press("Escape");
   await student

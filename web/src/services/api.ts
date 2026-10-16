@@ -10,6 +10,7 @@ export interface ChainInfo {
   chainId: number;
   contractAddress: string;
   deploymentBlock: string;
+  protocolVersion?: number;
 }
 export interface Receipt {
   chainId: number;
@@ -18,6 +19,8 @@ export interface Receipt {
   blockNumber: string;
 }
 export interface PublicProgram extends ChainInfo {
+  currentRules?: boolean;
+  scoringRulesHash?: string | null;
   metadata?: ProgramMetadata;
   programId: string;
   issuer: string;
@@ -45,7 +48,21 @@ export interface Credential extends ChainInfo {
   issuerCurrentlyAuthorized: boolean;
   holderIdentityVerified: false;
 }
+export interface ScoringEvidence {
+  programName?: string;
+  programId: string;
+  status: "verified" | "not_verified";
+  reason?: string;
+  calculatedScore?: number;
+  eligible?: boolean;
+  ruleVersion?: number;
+  datasetId?: string;
+  totalCommitment?: string;
+  verifiedAt?: string;
+  verification?: Receipt | null;
+}
 export interface WalletRecord {
+  scoring?: ScoringEvidence[];
   program?: ProgramMetadata | null;
   resultId: string;
   commitment: string;
@@ -80,6 +97,7 @@ export interface Wallet extends ChainInfo {
   records: WalletRecord[];
 }
 export interface Proof extends ChainInfo {
+  scoring?: ScoringEvidence[];
   resultId: string;
   report: WalletRecord["report"];
   salt: string;
@@ -94,6 +112,7 @@ export interface Proof extends ChainInfo {
   recordedAt: string;
 }
 export interface OfficeResult {
+  scoring?: ScoringEvidence[];
   publication: Receipt | null;
   resultId: string;
   studentId: string;
@@ -171,6 +190,10 @@ export async function api<T>(
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError))
     return error instanceof Error ? error.message : "Operation unavailable.";
+  if(error.code === "authenticated_exam_record_required") return "The exam authority has not authenticated a matching score record yet. Ask the admissions team to check the exam dataset.";
+  if(error.code === "result_scores_do_not_match_authenticated_exam_record") return "These result scores do not match the authenticated exam record. Verification has stopped; ask the admissions team to review the source records.";
+  if(error.code === "verified_eligible_scoring_required") return "Verify this applicant’s score calculation and eligibility before issuing an admission token.";
+  if(error.code === "zk_registry_upgrade_required") return "This registry cannot verify private scoring proofs. Connect the verified-scoring registry first.";
   if (error.status === 401 && error.code === "invalid_credentials")
     return "The ID or password is incorrect. Check your account ID and use the sign-in page for your account type.";
   if (error.status === 401)

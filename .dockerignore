@@ -12,3 +12,11 @@
 **/.codex
 **/.agents
 **/.DS_Store
+
+**/Prover.toml
+**/*.wtns
+**/*witness*
+zk/**/target
+
+# Examination-authority key custody stays outside all build contexts.
+**/.secrets

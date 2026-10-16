@@ -53,11 +53,11 @@ export const Layout = ({
           ))}
         </nav>
         <div className="header-end">
-          {page === "wallet" ? (
+          {/* {page === "wallet" ? (
             <a className="mytcas-header-link" href="https://www.mytcas.com/">
               Back to myTCAS <Icon name="external" size={14} />
             </a>
-          ) : null}
+          ) : null} */}
           <a
             className={`institution-link${page === "university" ? " active" : ""}`}
             href={live ? "/university" : "/university?preview=1"}

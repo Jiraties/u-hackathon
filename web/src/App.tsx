@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useAppRouter } from "./router";
 import LiveApp from "./LiveApp";
 import { useRuleWorkspace } from "./services/ruleWorkspace";
 import { Notice } from "./components/ui";
@@ -12,16 +12,6 @@ import VerificationPage from "./pages/VerificationPage";
 // Local presentation interactions only. No API requests, wallet providers, contract reads, or writes.
 // Vite serves index.html for direct route visits; configure the same SPA fallback on hosting later.
 const PreviewApp = () => {
-  useEffect(()=>{
-    const preserve=(event:MouseEvent)=>{
-      const anchor=(event.target as Element).closest?.("a");
-      if(!anchor || anchor.origin!==location.origin || anchor.hash && anchor.pathname===location.pathname) return;
-      const url=new URL(anchor.href); url.searchParams.set("preview","1"); anchor.href=url.toString();
-    };
-    document.addEventListener("click",preserve,true);
-    return()=>document.removeEventListener("click",preserve,true);
-  },[]);
-
   const controller = useRuleWorkspace(demoData.rulebooks);
   const requestedRun = new URLSearchParams(window.location.search).get("run");
   const run = controller.workspace.runs.find(item=>item.id === requestedRun);
@@ -43,5 +33,9 @@ const PreviewApp = () => {
   }
   return <Layout page={page}>{page === "wallet" && requestedRun && (!run || run.studentAdmitted) ? <Notice>This local non-admitted result is unavailable. Showing the original seeded wallet.</Notice> : null}{content}</Layout>;
 };
-const App = () => new URLSearchParams(window.location.search).get("preview") === "1" ? <PreviewApp/> : <LiveApp/>;
+const App = () => {
+  const navigation = useAppRouter();
+  return new URLSearchParams(window.location.search).get("preview") === "1"
+    ? <PreviewApp key={navigation}/> : <LiveApp key={navigation}/>;
+};
 export default App;

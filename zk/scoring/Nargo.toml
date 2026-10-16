@@ -1,0 +1,4 @@
+[package]
+name = "fairpass_scoring"
+type = "bin"
+authors = ["FairPass"]

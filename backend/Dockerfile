@@ -8,8 +8,9 @@ COPY backend/src ./src
 COPY backend/shared ./shared
 COPY backend/scripts ./scripts
 COPY backend/test ./test
+COPY zk /zk
 COPY backend/tsconfig.json backend/hardhat.config.ts ./
-RUN npm run compile && npm run build
+RUN npm run zk:build && npm run compile && npm run build
 COPY docker ./docker
 RUN mkdir -p deployments cache && chown -R node:node deployments cache
 
@@ -31,6 +32,7 @@ COPY --from=production-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/artifacts ./artifacts
+COPY --from=build --chown=node:node /zk /zk
 COPY --from=build --chown=node:node /app/docker ./docker
 RUN mkdir -p deployments && chown node:node deployments
 USER node

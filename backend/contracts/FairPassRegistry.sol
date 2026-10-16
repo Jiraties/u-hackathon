@@ -21,8 +21,9 @@ contract FairPassRegistry is AccessControlDefaultAdminRules, Pausable {
         bytes32 rules;
         uint64 lockedAt;
     }
-    // Public result projection contains only a salted commitment and timestamp.
-    // Outcome and subject binding are stored privately and used by contract logic.
+    // The public result view returns a commitment and timestamp. Transaction calldata
+    // and contract storage still expose the opaque subject, selected program and
+    // outcome. Solidity private visibility is not a privacy mechanism.
     struct Result {
         bytes32 commitment;
         bytes32 subject;
@@ -42,7 +43,7 @@ contract FairPassRegistry is AccessControlDefaultAdminRules, Pausable {
     }
     mapping(address => bool) public institutions;
     mapping(bytes32 => Program) public programs;
-    mapping(bytes32 => Result) private results;
+    mapping(bytes32 => Result) internal results;
     mapping(bytes32 => Right) private rights;
     mapping(bytes32 => bytes32) public activeRight;
 
@@ -71,7 +72,10 @@ contract FairPassRegistry is AccessControlDefaultAdminRules, Pausable {
     }
     function pause() external onlyRole(GUARDIAN) { _pause(); }
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) { _unpause(); }
-    function registerProgram(bytes32 id, uint32 year, uint32 capacity, bytes32 rules) external whenNotPaused {
+    function registerProgram(bytes32 id, uint32 year, uint32 capacity, bytes32 rules) external virtual whenNotPaused {
+        _registerProgram(id, year, capacity, rules);
+    }
+    function _registerProgram(bytes32 id, uint32 year, uint32 capacity, bytes32 rules) internal {
         if (!institutions[msg.sender]) revert Unauthorized();
         if (id == 0 || year == 0 || capacity == 0 || rules == 0) revert Invalid();
         if (programs[id].issuer != address(0)) revert Exists();
@@ -83,7 +87,7 @@ contract FairPassRegistry is AccessControlDefaultAdminRules, Pausable {
         if (programs[id].issuer != msg.sender || !institutions[msg.sender]) revert Unauthorized();
     }
     /// @notice Capacity can change only before rules lock. A new cycle needs a new program ID.
-    function reviseProgram(bytes32 id, uint32 capacity, bytes32 rules, bytes32 reason) external whenNotPaused {
+    function reviseProgram(bytes32 id, uint32 capacity, bytes32 rules, bytes32 reason) external virtual whenNotPaused {
         _issuer(id);
         Program storage p = programs[id];
         if (p.lockedAt != 0) revert Locked();
@@ -127,11 +131,13 @@ contract FairPassRegistry is AccessControlDefaultAdminRules, Pausable {
         bytes32 binding = keccak256(abi.encode(r.subject, r.year));
         if (activeRight[binding] != 0) revert Exists();
         if (p.active >= p.capacity || p.available == 0) revert Capacity();
+        _beforeIssue(resultId, r);
         r.consumed = true; p.active++; p.issued++; p.available--;
         activeRight[binding] = id;
         rights[id] = Right(r.program, resultId, r.subject, r.year, Status.Active);
         emit RightIssued(id, r.program);
     }
+    function _beforeIssue(bytes32, Result storage) internal view virtual {}
     function changeStatus(bytes32 id, Status status, bytes32 reason) external whenNotPaused {
         Right storage r = rights[id];
         _issuer(r.program);

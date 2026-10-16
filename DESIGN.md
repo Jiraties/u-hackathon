@@ -353,3 +353,24 @@ including wallet, non-admitted result, sign-in, verification, transparency,
 university console, builder, and builder review. These captures document the
 connected surfaces; they do not establish production readiness or admissions
 fairness. Runtime/setup details remain in `docs/live-demo-guide.md`.
+
+
+Live API integration must retain the original rule authoring presentation. Both
+live and preview use `web/src/components/RuleEditors.tsx`: selected subject cards,
+weight sliders and numeric inputs, component source/scales, the visual score
+composition, and the friendly eligibility builder. Do not replace these with a
+flat list of exam checkboxes. Preserve live draft saving, authenticated publication
+and genuine transaction feedback while reusing the approved visual components.
+
+
+### Private scoring evidence (v2)
+
+Preserve the admitted student's pass and the existing rule builder. Show private
+scoring evidence inside the result trace for both student outcomes. The path is
+Private scores → ZK proof → Blockchain verification → Checkable result. Only a
+current, matching contract claim with a checked private total opening may produce
+a verified badge. Keep scoring/eligibility proof, authenticated allocation and
+independently verified allocation correctness distinct; the latter is not proved.
+The v2 builder explains its three-subject, 100-point scoring subset and rejects
+unsupported criteria. Contract identifiers and receipts stay in optional evidence
+disclosures; fictional-examination provenance remains explicit.

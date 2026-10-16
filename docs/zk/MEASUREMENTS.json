@@ -1,0 +1,30 @@
+{
+  "toolchain": {
+    "noir": "1.0.0-rc.5",
+    "barretenberg": "5.2.1",
+    "target": "evm (zero knowledge enabled)"
+  },
+  "gas": {
+    "deploy_RelationsLib": "1777166",
+    "deploy_ZKTranscriptLib": "1383456",
+    "deploy_HonkVerifier": "4000862",
+    "deploy_FairPassRegistryV2": "3928428",
+    "publish_policy": "273631",
+    "lock_rules": "54585",
+    "commit_dataset": "124134",
+    "verify_scoring": "3874756",
+    "issue_right": "189624"
+  },
+  "proof": {
+    "durationMs": 399.88549999999987,
+    "serverRssMiB": 414.453125,
+    "bytes": 8000,
+    "publicInputs": 27,
+    "note": "Server RSS sample; native prover child peak not included."
+  },
+  "environment": {
+    "network": "isolated local Hardhat EVM, chain 31337",
+    "host": "macOS arm64",
+    "externalTransactionsSubmitted": 0
+  }
+}

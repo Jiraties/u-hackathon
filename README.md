@@ -47,9 +47,14 @@ Open **http://localhost:8080**.
 
 | Account | Sign-in page | ID | Local password |
 | --- | --- | --- | --- |
-| Institution staff | **For universities** | `demo-office` | `fairpass-local-fictional-password` |
-| Admitted student in the walkthrough | **My wallet** | `demo-pim` | `fairpass-local-fictional-password` |
-| Non-admitted student in the walkthrough | **My wallet** | `demo-narin` | `fairpass-local-fictional-password` |
+| Institution staff | **For universities** | `demo-office` | `password` |
+| Admitted student in the walkthrough | **My wallet** | `demo-pim` | `password` |
+| Non-admitted student in the walkthrough | **My wallet** | `demo-narin` | `password` |
+
+Local Docker startup automatically creates these fictional accounts if they are
+missing, including after a fresh local chain/database cycle. Existing passwords
+are preserved. Staff sign in at `/university`; students use `/student/wallet`.
+
 
 Provisioning creates accounts only. **No results yet** is expected until you complete the walkthrough below. Running provisioning again preserves existing passwords.
 
@@ -126,7 +131,7 @@ Staff creates rules → publishes and locks them
 | --- | --- |
 | MongoDB | Accounts/password hashes, drafts, private reports and salts, scores, preferences, processing runs, program metadata and saved receipts |
 | Blockchain | Authorized roles, program capacity, rule/result commitments, credential lifecycle and events |
-| Browser | UI and bearer sessions in sessionStorage; sessions expire after eight hours |
+| Browser | UI and signed bearer JWTs in localStorage; sessions persist across browser restarts for seven days by default |
 
 A result attestation and an admission-right token are separate records. An offer or matching result alone does not issue a token.
 
@@ -459,7 +464,7 @@ Keep encrypted database backups outside the VPS and test restoration. Choose Atl
 | Port 8080 is already in use | Stop the other stack’s web service, or start with `WEB_PORT=18080 docker compose up -d --build --wait` and keep that variable on later Compose commands. |
 | Vite `ECONNREFUSED 127.0.0.1:3001` | Docker’s API is internal. Remove the old `DEV_API_TARGET`, or set it to `http://127.0.0.1:8080/api`, then restart Vite. |
 | Invalid credentials | Use the correct student/staff page. Local Docker uses the documented local password; Fuji/hosting use the password from initial provisioning. Re-provisioning does not reset it. |
-| Session invalid/expired | Sign out and sign in again. Sessions are per tab and expire after eight hours. |
+| Session invalid/expired | Sign out and sign in again. Sessions persist across tabs and browser restarts for seven days by default. Sign out revokes the server session. Sign in once after upgrading to JWT authentication. |
 | Wallet says **No results yet** | Provisioning creates accounts only. Complete rule publication and result processing for that account. |
 | No students ready for issuance | The result must be admitted and the student must request confirmation. Refresh confirmations in the staff workspace. |
 | Contract/rules/run conflict | Check network, contract, database and intake. Retry the original payload after timeouts; use a new round only for a new cohort. |
@@ -502,3 +507,20 @@ Avoid sharing environment files or full resolved Compose output; they can contai
 The UI/API/registry support the demonstrated flow. Official score-provider integration, independent allocation-fairness verification, account recovery/MFA and high availability are not implemented. The existing public-key Fuji registry remains a demo limitation even after hosting it. QR scanning is not implemented; code/link verification is available.
 
 Further reference: [API endpoints](backend/API.md), [security boundaries](backend/SECURITY.md), [design standard](DESIGN.md), and [UI/API mapping](docs/reference-ui-api-map.md). These are optional references; the setup steps above are complete without them.
+
+Browser authentication uses signed HS256 JWTs plus revocable MongoDB session records.
+Set `SESSION_TTL_SECONDS` to change the default seven-day lifetime (300 seconds to 30 days).
+Set `SESSION_JWT_SECRET` to a dedicated random secret of at least 32 characters; if omitted,
+a domain-separated signing key is derived from `ADMIN_API_TOKEN`. Keep the key stable across
+API restarts. Rotating it invalidates existing JWTs. These settings belong only on the API.
+JWT payloads contain an opaque session subject and role, without student identity or scores.
+
+## Private scoring verification (v2)
+
+A real Noir/Barretenberg scoring proof and Solidity verifier are implemented in
+[the private-scoring module](docs/zk/README.md). The isolated local demo runs at
+http://localhost:8081 using `compose.zk.yaml`; it preserves the original demo on
+8080. See the module guide for setup, supported rules, cryptographic guarantees,
+actual local gas measurements and the separate Fuji deployment plan. The old
+Fuji registry remains v1; no ZK feature is claimed for it. No external v2 deployment
+or transaction has been performed.

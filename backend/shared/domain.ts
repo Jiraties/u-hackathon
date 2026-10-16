@@ -1,3 +1,4 @@
+import { scoreHundredths, fixedWeightedScore } from './scoringMath.js';
 export interface ChainReference {
   chainId: number;
   contractAddress: `0x${string}`;
@@ -90,9 +91,10 @@ export const calculateProgramScore = (
     .map((term) => term.contribution)
     .sort((a, b) => a - b)
     .reduce((sum, value) => sum + value, 0);
+  const fixedCompatible = terms.every(t => t.maximum === 100 && Math.abs(t.score * 100 - Math.round(t.score * 100)) < 1e-7 && Math.abs(t.weightPercent * 100 - Math.round(t.weightPercent * 100)) < 1e-7);
   return {
     status: "calculated",
-    total: Math.round((rawTotal + Number.EPSILON) * 100) / 100,
+    total: fixedCompatible ? fixedWeightedScore(terms.map(t => scoreHundredths(t.score)), terms.map(t => scoreHundredths(t.weightPercent))) / 100 : Math.round((rawTotal + Number.EPSILON) * 100) / 100,
     rawTotal,
     terms,
   };
@@ -391,6 +393,7 @@ export const forkRulebook = (
 export const allocatePreview = (
   rules: readonly AdmissionRulebook[],
   applicants: readonly PreviewApplicant[],
+  options: { scorePrecision?: "unrounded" | "hundredths-half-up" } = {},
 ) => {
   if (
     new Set(rules.map((r) => r.programId)).size !== rules.length ||
@@ -431,7 +434,7 @@ export const allocatePreview = (
     }
     const pool = [
       ...held.get(programId)!,
-      { id: applicant.id, score: evaluated.rawTotal },
+      { id: applicant.id, score: options.scorePrecision === "hundredths-half-up" ? evaluated.total : evaluated.rawTotal },
     ].sort(
       (a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );

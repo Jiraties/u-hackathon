@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
 const base = process.env.API_URL ?? 'http://127.0.0.1:3001';
-const password = z.string().min(12).max(128).parse(process.env.DEMO_PASSWORD);
+const localDemo = process.env.FAIRPASS_LOCAL === 'true' && process.env.CHAIN_ID === '31337';
+const password = (localDemo ? z.union([z.string().min(12).max(128), z.literal('password')]) : z.string().min(12).max(128)).parse(process.env.DEMO_PASSWORD);
 const token = z.string().min(32).parse(process.env.ADMIN_API_TOKEN);
 const institutionId = process.env.INSTITUTION_ID ?? 'fairpass-demo';
 const call = async (path:string, body:unknown) => {

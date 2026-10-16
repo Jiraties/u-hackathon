@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "status": "prepared_not_deployed",
+  "chainId": 43113,
+  "roles": {
+    "admin": "0xbfcD72d5ab7fB315c4987be0841A05cCA530c07a",
+    "allocationAuthority": "0x2e521A6633Ee57098eFa921737110572Cfc32130",
+    "institutionalIssuer": "0x8eC231709e282a154f39f86717E1090D297f2A38",
+    "examinationAuthority": "0x57533C6203891f2d84507Ad70DB1AA5fE5b1ea0b"
+  },
+  "contracts": [
+    {
+      "name": "RelationsLib",
+      "predictedAddress": "0x65De911Db83A8937104F126e8927E3Fd484635A6",
+      "adminNonce": 0,
+      "creationBytes": 8024,
+      "unlinkedBytecodeSha256": "f52c773450ce3610ab5125f30775aa555c3f76742ad5c618ca1aba5a7cf79407",
+      "linkedBytecodeSha256": "f52c773450ce3610ab5125f30775aa555c3f76742ad5c618ca1aba5a7cf79407"
+    },
+    {
+      "name": "ZKTranscriptLib",
+      "predictedAddress": "0x8493494Af04674f649c8479b0B75345879aDD856",
+      "adminNonce": 1,
+      "creationBytes": 6203,
+      "unlinkedBytecodeSha256": "2288eed256826ff792a9e07441676543a56b8f551da0c931627b9ec9340cb0ed",
+      "linkedBytecodeSha256": "2288eed256826ff792a9e07441676543a56b8f551da0c931627b9ec9340cb0ed"
+    },
+    {
+      "name": "HonkVerifier",
+      "predictedAddress": "0x226cA8Ad4E0581ea5d44035a97a30cf398442967",
+      "adminNonce": 2,
+      "creationBytes": 18590,
+      "unlinkedBytecodeSha256": "982cafcffa130af5fb5493313958f414244ece56d341fafea0bfc1e84e9cf582",
+      "linkedBytecodeSha256": "a4d218ef2642e646ed904f1d4d9a596876cc0605e59d655dd39dab487a2f34a1"
+    },
+    {
+      "name": "FairPassRegistryV2",
+      "predictedAddress": "0x7b312C07b93C420D1C371DcCD88fe5a36b4C093B",
+      "adminNonce": 3,
+      "creationBytes": 17995,
+      "unlinkedBytecodeSha256": "5b2039271ee2e80d6e0e0d097ebb3d1e061a1c64035595c1e9aeff3fa75a164e",
+      "linkedBytecodeSha256": "5b2039271ee2e80d6e0e0d097ebb3d1e061a1c64035595c1e9aeff3fa75a164e"
+    }
+  ],
+  "addressAssumption": "Fresh admin has nonce 0. Any prior admin transaction requires a new reviewed plan.",
+  "verificationKeySha256": "be399a1f2adfbac473dc05078dd8563c5ce20997b49b260aab8700276b1bba2f",
+  "circuitSourceSha256": "fd9989aa95886ab495a4e803110a62d7fa5c5f8a8a7a39499f36b2d41f4d5d21",
+  "definitionDigest": "0x00cfafd99eaf394bc45e87ef42a5d6db03913cf8026397c6d280c53a0bc14834",
+  "scenarioInstance": "fuji-replay-001",
+  "registryDatabase": "fairpass_demo_world_v2_fuji_001",
+  "requiresApproval": [
+    "funding",
+    "four_contract_deployments",
+    "issuer_authorization",
+    "dataset_publication",
+    "rule_publication",
+    "result_publication",
+    "proof_transactions",
+    "confirmations_and_rights"
+  ],
+  "externalTransactionsSubmitted": 0
+}

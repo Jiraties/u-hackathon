@@ -6,6 +6,8 @@ const path = require('node:path');
 const { createRequire } = require('node:module');
 const webRequire = createRequire(path.resolve(__dirname, '../package.json'));
 const ts = webRequire('typescript');
+// Load the SSR-safe toast module before URL-only window fixtures are installed.
+webRequire('react-hot-toast');
 
 for (const extension of ['.ts', '.tsx']) {
   require.extensions[extension] = (module, filename) => {
@@ -13,7 +15,10 @@ for (const extension of ['.ts', '.tsx']) {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
       fileName: filename,
     }).outputText;
-    module._compile(output, filename);
+    // Match NodeNext's .js-to-.ts resolution for shared source modules.
+    const resolved = output.replace(/require\((['"])(\.[^'"]+)\.js\1\)/g, (call, quote, specifier) =>
+      fs.existsSync(path.resolve(path.dirname(filename), specifier + '.ts')) ? `require(${quote}${specifier}.ts${quote})` : call);
+    module._compile(resolved, filename);
   };
 }
 

@@ -1,3 +1,9 @@
+import { ResultProofSummary } from "./components/ResultProofSummary";
+import { ScoringEvidenceCard } from "./components/ScoringEvidenceCard";
+import toast from "react-hot-toast";
+import { RulePublicationReview } from "./components/RulePublicationReview";
+import { replaceRoute } from "./router";
+import { RuleWeightComposition, RuleScoringEditor, RuleEligibilityEditor } from "./components/RuleEditors";
 import {
   useEffect,
   useState,
@@ -29,6 +35,7 @@ import {
   evaluateRulebook,
   examComponents,
   validateRulebook,
+  zkPolicyErrors,
   rulebookCommitment,
   type AdmissionRulebook,
 } from "./domain/rulebooks";
@@ -38,9 +45,12 @@ function useSession(role: "student" | "institution") {
   const [session, setSession] = useState<Session | null>(() => {
     try {
       const saved = JSON.parse(
-        sessionStorage.getItem(key) ?? "null",
+        localStorage.getItem(key) ?? sessionStorage.getItem(key) ?? "null",
       ) as Session | null;
-      return saved && Date.parse(saved.expiresAt) > Date.now() ? saved : null;
+      if (!saved || !saved.token || !Number.isFinite(Date.parse(saved.expiresAt)) || Date.parse(saved.expiresAt) <= Date.now()) return null;
+      localStorage.setItem(key, JSON.stringify(saved));
+      sessionStorage.removeItem(key);
+      return saved;
     } catch {
       return null;
     }
@@ -48,18 +58,35 @@ function useSession(role: "student" | "institution") {
   const save = (value: Session | null) => {
     setSession(value);
     try {
-      if (value) sessionStorage.setItem(key, JSON.stringify(value));
-      else sessionStorage.removeItem(key);
+      if (value) localStorage.setItem(key, JSON.stringify(value));
+      else localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
     } catch {
       /* Memory session remains usable. */
     }
   };
   useEffect(() => {
+    const sync = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) ?? "null") as Session | null;
+        setSession(saved?.token && Date.parse(saved.expiresAt) > Date.now() ? saved : null);
+      } catch { setSession(null); }
+    };
+    const storage = (event: StorageEvent) => { if (event.key === key || event.key === null) sync(); };
+    const wake = () => { if (session && Date.parse(session.expiresAt) <= Date.now()) save(null); };
+    window.addEventListener("storage", storage);
+    window.addEventListener("focus", wake);
+    return () => { window.removeEventListener("storage", storage); window.removeEventListener("focus", wake); };
+  }, [key, session]);
+  useEffect(() => {
     if (!session) return;
-    const timer = setTimeout(
-      () => save(null),
-      Math.max(0, Date.parse(session.expiresAt) - Date.now()),
-    );
+    let timer: ReturnType<typeof setTimeout>;
+    const check = () => {
+      const remaining = Date.parse(session.expiresAt) - Date.now();
+      if (remaining <= 0) save(null);
+      else timer = setTimeout(check, Math.min(2_147_483_647, remaining));
+    };
+    check();
     return () => clearTimeout(timer);
   }, [session]);
   return { session, save };
@@ -67,11 +94,14 @@ function useSession(role: "student" | "institution") {
 function useRequest() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const run = async (work: () => Promise<void>) => {
+  const run = async (work: () => Promise<void>, feedback?: { loading: string; success: string }) => {
     setBusy(true);
     setError("");
     try {
-      await work();
+      if (feedback) await toast.promise(Promise.resolve().then(work), {
+        loading: feedback.loading, success: feedback.success, error: errorMessage,
+      });
+      else await work();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -280,10 +310,22 @@ function StudentWallet() {
       active = false;
     };
   }, [session]);
-  if (!session) return <SignIn role="student" onLogin={save} />;
   const record =
     wallet?.records.find((r) => r.resultId === selected) ??
     wallet?.records[wallet.records.length - 1];
+  const resultId = record?.resultId;
+  useEffect(() => {
+    let active = true;
+    setProof(null);
+    if (session && resultId) {
+      void api<Proof>(`/me/results/${resultId}/proof`, { token: session.token })
+        .then((evidence) => { if (active) setProof(evidence); })
+        .catch(() => { if (active) setProof(null); });
+    }
+    return () => { active = false; };
+  }, [session?.token, resultId, record?.commitment]);
+  if (!session) return <SignIn role="student" onLogin={save} />;
+  const resultVerified = proof?.resultId === resultId && proof?.verification.resultIntegrity === "verified";
   const credential =
     record?.report.outcome === "admitted" ? record.credential : null;
   const rules = record?.report.rulebooks ?? [];
@@ -375,7 +417,21 @@ function StudentWallet() {
     >
       <div className="section-heading">
         <div>
-          <h2>Follow your result</h2>
+          <div className="result-verification-heading">
+            <h2>Follow your result</h2>
+              <button
+                type="button"
+                className={`evidence-badge result-verification-badge${resultVerified ? " on-chain" : ""}`}
+                disabled={busy}
+                onClick={check}
+                aria-label="View result verification and blockchain details"
+                aria-haspopup="dialog"
+              >
+                <span className="evidence-badge-symbol"><Icon name={resultVerified ? "check" : "file"} size={12} /></span>
+                {resultVerified ? "Verified" : "View proof"}
+                <Icon name="chevron" size={12} />
+              </button>
+          </div>
           <p>Your scores and the rulebook versions used for this round.</p>
         </div>
       </div>
@@ -579,6 +635,10 @@ function StudentWallet() {
       >
         Check result integrity
       </button>
+      {record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={() => void run(async () => {
+        await api(`/me/results/${record.resultId}/scoring`, {method:"POST",token:session.token,body:{programId:evidence.programId}});
+        await refresh();
+      }, {loading:"Generating a private proof and waiting for blockchain verification…",success:"Private scoring proof verified by the smart contract."})}/>)}
       <Json value={record.report} label="Private report details" />
     </section>
   ) : null;
@@ -720,7 +780,7 @@ function StudentWallet() {
                           token: session.token,
                         });
                         await refresh();
-                      });
+                      }, { loading: "Submitting your confirmation…", success: "Confirmation submitted. Your university can now issue your admission token." });
                   }}
                 >
                   Request confirmation
@@ -739,7 +799,17 @@ function StudentWallet() {
               </span>
             </div>
           </section>
-          <aside className="wallet-story">
+          {record.report.outcome === "not_admitted" ? (
+            <ResultProofSummary
+              key={record.resultId}
+              record={record}
+              chainId={wallet!.chainId}
+              resultVerified={resultVerified}
+              busy={busy}
+              onCheckIntegrity={check}
+              loadEvidence={() => api<Proof>(`/me/results/${record.resultId}/proof`, { token: session.token })}
+            />
+          ) : <aside className="wallet-story">
             <h2>Your result record</h2>
             <p>An offer and an issued admission token are separate records.</p>
             <button
@@ -750,7 +820,7 @@ function StudentWallet() {
               Check result integrity
             </button>
             <ConnectedGuide />
-          </aside>
+          </aside>}
         </div>
       ) : wallet ? (
         <section className="quiet-empty">
@@ -815,9 +885,23 @@ function StudentWallet() {
           </button>
         </form>
         <h2 id="live-proof-title">
-          Result integrity: {proof?.verification.resultIntegrity ?? "Checking"}
+          {proof?.verification.resultIntegrity === "verified" ? "Your result record is verified" : "Result verification"}
         </h2>
-        <p>The private report is compared with its commitment on chain.</p>
+        <p>
+          {proof?.verification.resultIntegrity === "verified"
+            ? "Your result matches the fingerprint recorded on the blockchain. The recorded fingerprint cannot be changed."
+            : "We could not confirm that this result matches a recorded blockchain fingerprint."}
+        </p>
+        {proof ? <>
+          <dl className="detail-list">
+            <div><dt>Network</dt><dd>{networkName(proof.chainId)}</dd></div>
+            <div><dt>Recorded</dt><dd>{Number(proof.recordedAt) > 0 ? new Date(Number(proof.recordedAt) * 1000).toLocaleString() : "Not recorded"}</dd></div>
+            <div><dt>Contract</dt><dd className="live-id">{proof.contractAddress}</dd></div>
+            <div><dt>Result fingerprint</dt><dd className="live-id">{proof.onchainCommitment}</dd></div>
+          </dl>
+          <ReceiptView value={proof.publication} />
+        </> : null}
+        <p>Your identity, scores and preferences stay private. This check confirms the result record; it does not independently verify the allocation.</p>
         <dl className="detail-list">
           <div>
             <dt>Score authenticity</dt>
@@ -876,7 +960,7 @@ function Verify() {
     setId(code);
     try {
       setCredential(await api<Credential>(`/public/verify/${code}`));
-      window.history.replaceState(null, "", `/verify/${code}`);
+      replaceRoute(`/verify/${encodeURIComponent(code)}`);
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) setMissing(true);
       else throw e;
@@ -1271,18 +1355,18 @@ function Transparency() {
     </div>
   );
 }
-const defaultRule = (): AdmissionRulebook => ({
+const defaultRule = (zkEnabled = false): AdmissionRulebook => ({
   id: `rule-${crypto.randomUUID()}`,
   programId: "demo-engineering",
   institutionId: "fairpass-demo",
   programName: "Fictional Engineering",
   faculty: "Engineering",
   academicYear: 2027,
-  round: "demo-1",
+  round: zkEnabled ? "Round 3" : "demo-1",
   capacity: 1,
   version: 1,
   method: "normalized-weighted-sum",
-  components: [
+  components: zkEnabled ? ["tgat","math1","physics"].map((id,index)=>({...examComponents.find(c=>c.scoreId===id)!,weightPercent:index===0?20:40,minimumPercent:50})) : [
     { ...examComponents[0], weightPercent: 100, minimumPercent: null },
   ],
   requiredSubjects: [],
@@ -1318,9 +1402,9 @@ function RuleTrial({ rule }: { rule: AdmissionRulebook }) {
               step="any"
               min={0}
               max={c.maximum}
-              value={c.score}
+              value={Number.isFinite(c.score) ? c.score : ""}
               onChange={(e) =>
-                setInputs({ ...inputs, [c.id]: Number(e.target.value) })
+                setInputs({ ...inputs, [c.id]: e.target.valueAsNumber })
               }
             />
           </Field>
@@ -1368,14 +1452,16 @@ function RuleBuilder({
   refresh,
   initial,
   initialRevision = 0,
+  zkEnabled = false,
 }: {
   session: Session;
   initial?: AdmissionRulebook;
   initialRevision?: number;
+  zkEnabled?: boolean;
   refresh: () => Promise<void>;
 }) {
   const [rule, setRule] = useState<AdmissionRulebook>(() => ({
-      ...(initial ?? defaultRule()),
+      ...(initial ?? defaultRule(zkEnabled)),
       institutionId: session.institutionId!,
     })),
     [step, setStep] = useState(0),
@@ -1398,6 +1484,7 @@ function RuleBuilder({
     setSaved(true);
     await refresh();
   };
+  const proofPolicyErrors = zkEnabled ? zkPolicyErrors(rule) : [];
   const steps = [
     "Program details",
     "Scoring rules",
@@ -1405,27 +1492,29 @@ function RuleBuilder({
     "Review rulebook",
   ];
   useEffect(() => {
+    let cancelled=false;
     setHash("");
-    void rulebookCommitment(rule)
-      .then(setHash)
-      .catch(() => {});
-  }, [rule]);
+    if(step===3) void rulebookCommitment(rule).then(value=>{if(!cancelled)setHash(value);}).catch(()=>{});
+    return()=>{cancelled=true;};
+  }, [rule,step]);
   const patch = (value: Partial<AdmissionRulebook>) => {
     if (busy || published) return;
     setSaved(false);
     setRule({ ...rule, ...value });
   };
   return (
-    <section className="panel live-panel">
+    <div className="restored-rule-builder">
+      <ol className="rule-builder-steps" aria-label="Rulebook progress">{steps.map((name,index)=><li key={name} className={step===index?"current":step>index?"complete":""} aria-current={step===index?"step":undefined}><span>{step>index?<Icon name="check" size={15}/>:index+1}</span>{name}</li>)}</ol>
+      <div className="rule-builder-layout"><section className="rule-builder-workspace">
       <div className="section-heading">
         <div>
-          <h2>Build a checkable rulebook.</h2>
-          <p>One rulebook. A shared reference.</p>
+          <h2>{steps[step]}</h2>
+          <p className="builder-step-intro">{["Give the rules a program, round and seat limit.","Choose the scores, then give each one its share.","Set the minimums students must meet.","Check the complete version before publishing it."][step]}</p>
         </div>
         <button
           className="button button-secondary"
           disabled={busy || !!published}
-          onClick={() => void run(saveDraft)}
+          onClick={() => void run(saveDraft, { loading: "Saving your draft…", success: "Draft saved. You can continue editing later." })}
         >
           Save draft
         </button>
@@ -1433,20 +1522,10 @@ function RuleBuilder({
       {saved ? (
         <p role="status">Draft saved. You can open it on another device.</p>
       ) : null}
-      <div className="live-steps">
-        {steps.map((name, index) => (
-          <button
-            key={name}
-            className={step === index ? "active" : ""}
-            onClick={() => setStep(index)}
-            aria-current={step === index ? "step" : undefined}
-          >
-            {index + 1}. {name}
-          </button>
-        ))}
-      </div>
+      {zkEnabled ? <p className="fine-print">Private proof support: three exam subjects out of 100, two decimal places, weighted scores and subject minimums. Curriculum and GPAX are not part of this proof.</p> : null}
+      <fieldset className="rule-editor-fields" disabled={busy || !!published}>
       {step === 0 ? (
-        <div className="live-grid">
+        <div className="builder-fields">
           {(["programId", "programName", "faculty", "round"] as const).map(
             (key) => (
               <Field
@@ -1478,8 +1557,8 @@ function RuleBuilder({
               type="number"
               min="2020"
               max="2100"
-              value={rule.academicYear}
-              onChange={(e) => patch({ academicYear: Number(e.target.value) })}
+              value={Number.isFinite(rule.academicYear) ? rule.academicYear : ""}
+              onChange={(e) => patch({ academicYear: e.target.valueAsNumber })}
             />
           </Field>
           <Field label="Capacity">
@@ -1487,222 +1566,67 @@ function RuleBuilder({
               type="number"
               min="1"
               max="10000"
-              value={rule.capacity}
-              onChange={(e) => patch({ capacity: Number(e.target.value) })}
+              value={Number.isFinite(rule.capacity) ? rule.capacity : ""}
+              onChange={(e) => patch({ capacity: e.target.valueAsNumber })}
             />
           </Field>
         </div>
       ) : null}
-      {step === 1 ? (
-        <>
-          <p>
-            Choose components and weights totalling 100%. GPAX uses a 4-point
-            scale; exam scores use 100.
-          </p>
-          <div className="connected-weights" aria-label="Score composition">
-            {rule.components.map((c, i) => (
-              <span
-                key={c.scoreId}
-                style={{
-                  flex: c.weightPercent,
-                  background: ["#0075c9", "#075da5", "#3786cc", "#4966a2"][
-                    i % 4
-                  ],
-                }}
-                title={`${c.label}: ${c.weightPercent}%`}
-              />
-            ))}
-          </div>
-          <p className="fine-print">
-            Total weight:{" "}
-            {rule.components.reduce((n, c) => n + c.weightPercent, 0)}%
-          </p>
-          {examComponents.map((component) => {
-            const selected = rule.components.find(
-              (c) => c.scoreId === component.scoreId,
-            );
-            return (
-              <div className="live-component" key={component.scoreId}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={!!selected}
-                    onChange={(e) =>
-                      patch({
-                        components: e.target.checked
-                          ? [
-                              ...rule.components,
-                              {
-                                ...component,
-                                weightPercent: 1,
-                                minimumPercent: null,
-                              },
-                            ]
-                          : rule.components.filter(
-                              (c) => c.scoreId !== component.scoreId,
-                            ),
-                        requiredSubjects: rule.requiredSubjects.filter(
-                          (id) => id !== component.scoreId,
-                        ),
-                      })
-                    }
-                  />
-                  {component.label}
-                </label>
-                {selected ? (
-                  <Field label="Weight %">
-                    <input
-                      type="number"
-                      min="0.01"
-                      max="100"
-                      step="any"
-                      value={selected.weightPercent}
-                      onChange={(e) =>
-                        patch({
-                          components: rule.components.map((c) =>
-                            c.scoreId === component.scoreId
-                              ? { ...c, weightPercent: Number(e.target.value) }
-                              : c,
-                          ),
-                        })
-                      }
-                    />
-                  </Field>
-                ) : null}
-              </div>
-            );
-          })}
-        </>
-      ) : null}
-      {step === 2 ? (
-        <>
-          <p>
-            Eligibility is checked before ranking; raw scores determine order
-            and rounding is for display only.
-          </p>
-          {rule.components.map((component) => (
-            <div className="live-component" key={component.scoreId}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={rule.requiredSubjects.includes(component.scoreId)}
-                  onChange={(e) =>
-                    patch({
-                      requiredSubjects: e.target.checked
-                        ? [...rule.requiredSubjects, component.scoreId]
-                        : rule.requiredSubjects.filter(
-                            (id) => id !== component.scoreId,
-                          ),
-                    })
-                  }
-                />
-                {component.label} required
-              </label>
-              <Field label="Minimum % (optional)">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={component.minimumPercent ?? ""}
-                  onChange={(e) =>
-                    patch({
-                      components: rule.components.map((c) =>
-                        c.scoreId === component.scoreId
-                          ? {
-                              ...c,
-                              minimumPercent:
-                                e.target.value === ""
-                                  ? null
-                                  : Number(e.target.value),
-                            }
-                          : c,
-                      ),
-                    })
-                  }
-                />
-              </Field>
-            </div>
-          ))}
-          <Field label="Curriculum">
-            <select
-              value={rule.qualifications[0]?.equals ?? ""}
-              onChange={(e) =>
-                patch({
-                  qualifications: e.target.value
-                    ? [{ field: "curriculum", equals: e.target.value }]
-                    : [],
-                })
-              }
-            >
-              <option value="">Any curriculum</option>
-              <option>Science–Mathematics</option>
-              <option>Arts–Languages</option>
-            </select>
-          </Field>
-        </>
-      ) : null}
+      {step === 1 ? <RuleScoringEditor rule={rule} onChange={patch} /> : null}
+      {step === 2 ? <RuleEligibilityEditor rule={rule} onChange={patch} /> : null}
       {step === 3 ? (
         <>
-          <h3>
-            {rule.programName} · {rule.capacity} seats
-          </h3>
-          <p>
-            {rule.academicYear} · {rule.round} · Version {rule.version}
-          </p>
-          <p className="live-id">
-            SHA-256 commitment:{" "}
-            {hash || "Complete the fields to calculate a valid commitment."}
-          </p>
-          {validateRulebook(rule).map((message) => (
+          <RulePublicationReview rule={rule} fingerprint={hash} />
+          {[...validateRulebook(rule),...proofPolicyErrors].map((message) => (
             <p key={message} className="live-error">
               {message}
             </p>
           ))}
-          <p>
-            Publishing registers the program and locks these rules on the
-            configured chain. This intake cannot be republished with changed
-            rules.
-          </p>
           <button
             className="button button-primary"
-            disabled={busy || !!published || validateRulebook(rule).length > 0}
+            disabled={busy || !!published || !hash || validateRulebook(rule).length > 0 || proofPolicyErrors.length > 0}
             onClick={() =>
               void run(async () => {
                 if (
                   !confirm(
-                    "Publish on Avalanche? These rules will be locked for this intake. Transaction fees apply.",
+                    "Publish this rulebook? The smart contract will record its fingerprint and seat limit, then lock this intake. You cannot replace these rules afterward. The university account pays the network fee.",
                   )
                 )
                   return;
                 await saveDraft();
-                const result = await api<{
-                  programId: string;
-                  rulesHash: string;
-                  lock: Receipt | null;
-                }>("/office/rulebooks/publish", {
-                  method: "POST",
-                  token: session.token,
-                  body: rule,
+                const result = await toast.promise((async () => {
+                  const response = await api<{
+                    programId: string;
+                    rulesHash: string;
+                    lock: Receipt | null;
+                  }>("/office/rulebooks/publish", {
+                    method: "POST", token: session.token, body: rule,
+                  });
+                  if (response.rulesHash !== hash) throw new Error("The returned commitment does not match this rulebook.");
+                  return response;
+                })(), {
+                  loading: "Publishing rules… waiting for network confirmation.",
+                  success: (response) => response.lock?.chainId === 43113 || response.lock?.chainId === 43114
+                    ? "Published on Avalanche. This intake’s rules are locked."
+                    : "Rules published and locked on the connected network.",
+                  error: errorMessage,
                 });
-                if (result.rulesHash !== hash)
-                  throw new Error(
-                    "The returned commitment does not match this rulebook.",
-                  );
                 setPublished(result);
                 await refresh();
               })
             }
           >
             {busy
-              ? "Publishing; waiting for chain…"
+              ? "Publishing… waiting for network confirmation"
               : published
                 ? "Rules locked"
                 : "Publish on Avalanche"}
           </button>
           <RuleTrial rule={rule} />
-          <Json value={rule} label="Complete rule payload" />
+          <Json value={rule} label="View the full rulebook data" />
         </>
       ) : null}
+      </fieldset>
       {error ? <Alert>{error}</Alert> : null}
       {published ? (
         <div role="status">
@@ -1713,7 +1637,7 @@ function RuleBuilder({
             className="button"
             onClick={() => {
               setRule({
-                ...defaultRule(),
+                ...defaultRule(zkEnabled),
                 institutionId: session.institutionId!,
               });
               setPublished(null);
@@ -1726,7 +1650,7 @@ function RuleBuilder({
           </button>
         </div>
       ) : null}
-      <div className="live-actions">
+      <div className="builder-navigation">
         {step > 0 ? (
           <button className="button" onClick={() => setStep(step - 1)}>
             Back
@@ -1741,7 +1665,8 @@ function RuleBuilder({
           </button>
         ) : null}
       </div>
-    </section>
+    </section><aside className="rule-builder-aside"><span className="story-symbol"><Icon name="file" size={27}/></span><h2>One rulebook.<br/>A shared reference.</h2><p>The weights you define here are the weights students see beside their calculation.</p><div className="rule-aside-path"><span><Icon name="university" size={18}/>You define the rules</span><Icon name="down" size={16}/><span><Icon name="lock" size={18}/>A version preserves them</span><Icon name="down" size={16}/><span><Icon name="chart" size={18}/>Students inspect the same rules</span></div><p className="fine-print">Universities set program rules. The central simulator handles preferences and allocation. Publishing uses the university’s configured account to record and lock a rules reference on the blockchain.</p></aside></div>
+    </div>
   );
 }
 function Simulation({
@@ -1794,7 +1719,7 @@ function Simulation({
   }, []);
   const eligible = programs.filter(
     (p) =>
-      p.rulebook?.institutionId === session.institutionId &&
+      p.currentRules !== false && p.rulebook?.institutionId === session.institutionId &&
       p.rulesMatch &&
       p.lockedAt !== "0",
   );
@@ -1831,10 +1756,12 @@ function Simulation({
   });
   const process = async (body: Payload) => {
     setPending(body);
-    await api("/office/simulations", {
-      method: "POST",
-      token: session.token,
-      body,
+    await toast.promise(api("/office/simulations", {
+      method: "POST", token: session.token, body,
+    }), {
+      loading: "Processing admissions… waiting for results.",
+      success: "Admissions processed. The results are ready to review.",
+      error: errorMessage,
     });
     setCompleted(true);
     await refresh();
@@ -1913,12 +1840,12 @@ function Simulation({
                     min={0}
                     max={c.maximum}
                     step="any"
-                    value={a.scores[c.scoreId] ?? ""}
+                    value={Number.isFinite(a.scores[c.scoreId]) ? a.scores[c.scoreId] : ""}
                     onChange={(e) =>
                       update(index, {
                         scores: {
                           ...a.scores,
-                          [c.scoreId]: Number(e.target.value),
+                          [c.scoreId]: e.target.valueAsNumber,
                         },
                       })
                     }
@@ -2004,7 +1931,7 @@ function Simulation({
                     throw new Error(
                       "Choose programs from the same year and round.",
                     );
-                  setPreview(allocatePreview(rules, body.applicants));
+                  setPreview(allocatePreview(rules, body.applicants, {scorePrecision:programs.some(p=>p.protocolVersion===2)?"hundredths-half-up":"unrounded"}));
                 })
               }
             >
@@ -2112,7 +2039,7 @@ function IssueWizard({
       r.programId === programId &&
       r.outcome === "admitted" &&
       r.confirmationRequestedAt &&
-      !r.credential,
+      !r.credential && (program?.protocolVersion !== 2 || r.scoring?.some(e=>e.programId===programId && e.status==="verified" && e.eligible)),
   );
   return (
     <div className="connected-issuance">
@@ -2237,6 +2164,7 @@ function IssueWizard({
                       setDone((old) => [...old, id]);
                     }
                     setChosen([]);
+                    toast.success("Selected admission tokens issued. The network has confirmed them.");
                   } finally {
                     await refresh();
                   }
@@ -2260,6 +2188,7 @@ function University() {
   const [tab, setTab] = useState<"rules" | "process" | "issue">("rules"),
     [editing, setEditing] = useState<AdmissionRulebook | null>(null),
     [editRevision, setEditRevision] = useState(0);
+  const [zkEnabled,setZkEnabled] = useState(false);
   const [drafts, setDrafts] = useState<
     { rule: AdmissionRulebook; revision: number }[]
   >([]);
@@ -2269,14 +2198,16 @@ function University() {
   const { busy, error, run } = useRequest();
   const refresh = async () => {
     try {
-      const [p, r, workspace] = await Promise.all([
+      const [p, r, workspace, capabilities] = await Promise.all([
         api<PublicProgram[]>("/public/programs"),
         api<OfficeResult[]>("/office/results", { token: session!.token }),
         api<{ drafts: { rule: AdmissionRulebook; revision: number }[] }>(
           "/office/workspace",
           { token: session!.token },
         ),
+        api<{scoringProofs:boolean}>("/public/capabilities"),
       ]);
+      setZkEnabled(capabilities.scoringProofs);
       setPrograms(p);
       setResults(r);
       setDrafts(workspace.drafts);
@@ -2351,6 +2282,7 @@ function University() {
               key={editing.id}
               initial={editing}
               initialRevision={editRevision}
+              zkEnabled={zkEnabled}
               session={session}
               refresh={refresh}
             />
@@ -2363,7 +2295,7 @@ function University() {
                 className="button button-primary"
                 onClick={() => {
                   setEditing({
-                    ...defaultRule(),
+                    ...defaultRule(zkEnabled),
                     institutionId: session.institutionId!,
                   });
                   setEditRevision(0);
@@ -2372,15 +2304,14 @@ function University() {
                 Create rulebook <Icon name="plus" size={18} />
               </button>
             </div>
-            <div className="connected-rule-gallery">
+            <div className="connected-rule-gallery rulebook-programs">
               {programs
                 .filter(
                   (p) => p.rulebook?.institutionId === session.institutionId,
                 )
                 .map((p) => (
-                  <article key={p.programId} className="connected-rule-card">
-                    <Badge tone="green">Published</Badge>
-                    <h3>{p.rulebook!.programName}</h3>
+                  <article key={p.programId} className="rulebook-program">
+                    <div className="rulebook-program-heading"><span className="rule-program-symbol"><Icon name="file" size={24}/></span><div><span>{p.academicYear} · {p.rulebook!.round}</span><h3>{p.rulebook!.programName}</h3></div><Badge tone="green">Published</Badge></div>
                     <p>
                       {p.academicYear} · {p.rulebook!.round}
                     </p>
@@ -2394,6 +2325,11 @@ function University() {
                         <dd>{p.rulebook!.version}</dd>
                       </div>
                     </dl>
+                    <RuleWeightComposition rule={p.rulebook!} />
+                    {zkEnabled && p.currentRules !== false && p.historicalIssued === 0 ? <button className="text-button" onClick={()=>{
+                      setEditing({...structuredClone(p.rulebook!),id:`${p.rulebook!.programId}-v${p.rulebook!.version+1}-${crypto.randomUUID()}`,version:p.rulebook!.version+1,status:"draft",createdAt:new Date().toISOString(),sealedAt:null,commitment:null,chainReference:null,publication:null});setEditRevision(0);
+                    }}>Create amended version <Icon name="arrow" size={15}/></button> : null}
+                    {p.currentRules === false ? <p className="fine-print">Historical version. A newer published version applies to this intake.</p> : null}
                     <details>
                       <summary>View rulebook & history</summary>
                       <Json value={p.rulebook} />
@@ -2430,13 +2366,13 @@ function University() {
                   (d) => !programs.some((p) => p.rulebook?.id === d.rule.id),
                 )
                 .map((d) => (
-                  <article className="connected-rule-card" key={d.rule.id}>
-                    <Badge>Draft</Badge>
-                    <h3>{d.rule.programName}</h3>
+                  <article className="rulebook-program" key={d.rule.id}>
+                    <div className="rulebook-program-heading"><span className="rule-program-symbol"><Icon name="file" size={24}/></span><div><span>{d.rule.academicYear} · {d.rule.round}</span><h3>{d.rule.programName}</h3></div><Badge>Draft</Badge></div>
                     <p>
                       {d.rule.academicYear} · {d.rule.capacity} seats · v
                       {d.rule.version}
                     </p>
+                    <RuleWeightComposition rule={d.rule} />
                     <button
                       className="button button-secondary"
                       onClick={() => {
@@ -2504,7 +2440,7 @@ function University() {
                 !record.credential ? (
                   <button
                     className="button button-primary"
-                    disabled={busy}
+                    disabled={busy || (zkEnabled && !record.scoring?.some(e=>e.programId===record.programId && e.status==="verified" && e.eligible))}
                     onClick={() =>
                       void run(async () => {
                         if (
@@ -2520,6 +2456,7 @@ function University() {
                           token: session.token,
                         });
                         setReceipt(response.issuance);
+                        toast.success("Admission token issued. The network has confirmed it.");
                         await refresh();
                       })
                     }
@@ -2578,6 +2515,7 @@ function University() {
                                     },
                                   );
                                   setReceipt(response.transaction);
+                                  toast.success(`Admission token ${status}. The network has confirmed the update.`);
                                   await refresh();
                                 })
                               }
@@ -2589,6 +2527,10 @@ function University() {
                   </>
                 ) : null}
               </div>
+              {record.scoring?.map(evidence => <ScoringEvidenceCard key={evidence.programId} evidence={evidence} busy={busy} onVerify={() => void run(async () => {
+                await api(`/office/results/${record.resultId}/scoring`,{method:"POST",token:session.token,body:{programId:evidence.programId}});
+                await refresh();
+              },{loading:"Generating the private score proof…",success:"The smart contract verified the scoring proof."})}/>)}
               <ReceiptView value={record.issuance ?? record.publication} />
             </article>
           ))}

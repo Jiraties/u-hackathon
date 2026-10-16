@@ -39,7 +39,7 @@ Open http://localhost:8080. Local accounts use the DEMO_PASSWORD in compose.yaml
 6. Refresh the wallet and open public verification. Compare the program/credential/contract with Transparency and registry events.
 7. Sign in as demo-narin: a saved result attestation is available, with no admission right.
 
-Accounts/results live in MongoDB. Sessions live in sessionStorage per tab, expire after eight hours and are invalidated on sign out. No machine tokens or signing keys are sent to the browser.
+Accounts/results live in MongoDB. Signed JWT sessions persist in localStorage across tabs and browser restarts, expire after seven days by default and are revoked on sign out. No machine tokens or signing keys are sent to the browser.
 
 One intake has one immutable rulebook and one simulation run. Use a new round for another cohort. Retry the same request after timeouts; do not invent IDs to bypass saved state. The browser and API support multiple programs from the same year/round and ranked preferences with the same shared engine. Reorder preferences before previewing the allocation.
 
@@ -75,7 +75,7 @@ Browser E2E uses Chromium, temporary MongoDB and Hardhat on port 18545. It publi
 
 API tests cover role separation, foreign institution rejection, raw near-ties, GPAX, duplicate publication/run/issuance retries, pinned rules, tampered records, 404/503 and mined capacity reverts.
 
-Keep one API writer replica per signer wallet. Public hosting needs HTTPS. Bearer sessions in sessionStorage are an MVP without account recovery/MFA. Fictional institution-supplied simulation inputs are not official scores. Result integrity does not prove score authenticity or allocation fairness.
+Keep one API writer replica per signer wallet. Public hosting needs HTTPS. Bearer JWT sessions in localStorage are an MVP without account recovery/MFA. Fictional institution-supplied simulation inputs are not official scores. Result integrity does not prove score authenticity or allocation fairness.
 
 ## Persistence and recovery
 

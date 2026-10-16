@@ -1,0 +1,74 @@
+{
+  "toolchain": {
+    "noir": "1.0.0-rc.5",
+    "barretenberg": "5.2.1",
+    "target": "evm (zero knowledge enabled)"
+  },
+  "gas": {
+    "deploy_RelationsLib": "1777166",
+    "deploy_ZKTranscriptLib": "1383456",
+    "deploy_HonkVerifier": "4000862",
+    "deploy_FairPassRegistryV2": "3928428",
+    "authorize_institution": "48166",
+    "publish_policy": "273619",
+    "lock_rules": "54585",
+    "commit_dataset": "124134",
+    "verify_scoring": "3874504",
+    "issue_right": "189624",
+    "demo_world_dataset": "107010"
+  },
+  "proof": {
+    "durationMs": 401.3491670000001,
+    "serverRssMiB": 402.6875,
+    "bytes": 8000,
+    "publicInputs": 27,
+    "note": "Server RSS sample; native prover child peak not included."
+  },
+  "demoWorldGas": {
+    "registerScoringProgram": {
+      "transactions": 3,
+      "gas": "820893"
+    },
+    "lockRules": {
+      "transactions": 3,
+      "gas": "163755"
+    },
+    "recordResult": {
+      "transactions": 9,
+      "gas": "1064214"
+    },
+    "verifyScoring": {
+      "transactions": 27,
+      "gas": "104615574"
+    },
+    "confirmResult": {
+      "transactions": 6,
+      "gas": "199062"
+    },
+    "issueRight": {
+      "transactions": 6,
+      "gas": "1137696"
+    }
+  },
+  "demoWorld": {
+    "students": 9,
+    "programs": 3,
+    "realVerifiedClaims": 27,
+    "issuedRights": 6,
+    "externalTransactionsSubmitted": 0
+  },
+  "validatedAt": "2026-10-16T03:53:16.651Z",
+  "tests": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "browserJourneys": true
+  },
+  "scope": "Isolated local Hardhat EVM and MongoDB; not Fuji receipts",
+  "totals": {
+    "deploymentAndAuthorizationGas": "11138078",
+    "nineStudentScenarioGas": "108108204",
+    "combinedGas": "119246282"
+  },
+  "externalTransactionsSubmitted": 0
+}

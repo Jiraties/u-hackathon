@@ -208,11 +208,15 @@ test('deployment, bootstrap, server, fictional demo and independent verification
   let server: ChildProcess | undefined;
   let logs = '';
   try {
+    const {createServer}=await import('node:net');
+    const probe=createServer();await new Promise<void>(resolve=>probe.listen(0,'127.0.0.1',resolve));
+    const apiPort=(probe.address() as import('node:net').AddressInfo).port;
+    await new Promise<void>(resolve=>probe.close(()=>resolve()));
     // Exercise colored CLI output even when CI captures stdout without a TTY.
     const env = { ...process.env, FORCE_COLOR: '1', CHAIN_ID: '31337', RPC_URL: local.rpcUrls.default.http[0],
       ADMIN_PRIVATE_KEY: key(0), ADMIN_ADDRESS: '', AUTHORITY_PRIVATE_KEY: key(1), ISSUER_PRIVATE_KEY: key(2),
       ADMIN_API_TOKEN: 'cli-admin-token'.repeat(3), ISSUER_API_TOKEN: 'cli-issuer-token'.repeat(3), INTEGRATION_API_TOKEN: 'cli-integration-token'.repeat(3),
-      MONGODB_URI: mongo.getUri(), MONGODB_DATABASE: 'fairpass_cli', PORT: '18547', API_URL: 'http://127.0.0.1:18547',
+      MONGODB_URI: mongo.getUri(), MONGODB_DATABASE: 'fairpass_cli', PORT: String(apiPort), API_URL: `http://127.0.0.1:${apiPort}`, REGISTRY_VERSION: '1',
       DEMO_PASSWORD: 'fictional-cli-test-password', CORS_ORIGIN: 'http://localhost:5173', CONTRACT_ADDRESS: '', DEPLOYMENT_BLOCK: '0' };
     const deployment = await run(process.execPath, ['--import', 'tsx', 'scripts/deploy.ts'], { env });
     const match = stripVTControlCharacters(deployment.stdout).match(/Set CONTRACT_ADDRESS=(0x[0-9a-fA-F]{40}) and DEPLOYMENT_BLOCK=(\d+)/)!;
@@ -332,13 +336,12 @@ test('browser: publish rules → process cohort → student confirmation → ins
   const errors:string[]=[];for(const page of [office,student])page.on('pageerror',error=>errors.push(error.message));
   const {browserJourney}=await import('../scripts/browser-journey.js');
   async function capture(page:import('playwright').Page,name:string){
-    await page.evaluate(()=>document.getAnimations().forEach(a=>a.finish()));
+    await page.evaluate(()=>document.getAnimations().forEach(a=>{if(Number.isFinite(a.effect?.getComputedTiming().endTime))a.finish();else a.pause();}));
     await page.screenshot({path:path.resolve('cache/connected-'+name+'-desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});
-    await page.evaluate(()=>document.getAnimations().forEach(a=>a.finish()));
+    await page.evaluate(()=>document.getAnimations().forEach(a=>{if(Number.isFinite(a.effect?.getComputedTiming().endTime))a.finish();else a.pause();}));
     await page.screenshot({path:path.resolve('cache/connected-'+name+'-mobile.png'),fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,name+' fits mobile');
-    if(name==='wallet'||name==='non-admitted')assert.equal(await page.getByRole('link',{name:'Back to myTCAS',exact:false}).isVisible(),true);
     await page.setViewportSize({width:1440,height:1000});
   }
   const credentialId=await browserJourney({office,student,base,operatorId:'browser-office',studentId:'browser-pim',rejectedId:'browser-narin',password,round:'browser-round',capture});
