@@ -189,7 +189,7 @@ const RulesChapter = ({
           <p>
             {confirmed
               ? "A later change won’t match the locked version. The university cannot quietly rewrite the rules behind a result."
-              : "These are the prepared rules. Publication evidence is not available yet."}
+              : world.verificationPending ? "These are the prepared rules. Their blockchain publication is being checked." : "These are the prepared rules. Publication evidence is not available yet."}
           </p>
         </div>
         <button className="button button-primary" onClick={inspect}>
@@ -235,7 +235,7 @@ const RulesChapter = ({
           <div className="demo-rule-path">
             <span>Draft</span>
             <Icon name="chevron" size={15} />
-            <span>{confirmed ? "Published" : "Publication pending"}</span>
+            <span>{confirmed ? "Published" : world.verificationPending ? "Checking publication" : "Publication unconfirmed"}</span>
             <Icon name="chevron" size={15} />
             <strong>
               <Icon name={confirmed ? "lock" : "clock"} size={15} />
@@ -243,7 +243,7 @@ const RulesChapter = ({
                 ? world.mode === "fuji"
                   ? "Locked on Avalanche"
                   : "Locked on local chain"
-                : "Not yet locked"}
+                : world.verificationPending ? "Checking lock evidence" : "Lock unconfirmed"}
             </strong>
           </div>
         </div>
@@ -353,7 +353,7 @@ const ProofChapter = ({
                     ? world.mode === "fuji"
                       ? "Calculation verified on Avalanche."
                       : "Verified on local test chain."
-                    : "Verification unavailable."}
+                    : world.verificationPending ? "Checking the proof…" : "Verification unavailable."}
                 </strong>
                 <span>Raw scores hidden · Blinded total recorded</span>
                 {evidence && "totalCommitment" in evidence ? (
