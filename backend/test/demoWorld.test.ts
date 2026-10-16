@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import {createDemoScenario,definitionDigest,DEFINITION_ID} from '../src/demo/scenario.js';
@@ -58,4 +59,11 @@ test('keyless chain gateway refuses writes before touching an RPC or private key
  const gateway=createChain({DEMO_READ_ONLY:true,REGISTRY_VERSION:2,CHAIN_ID:43113,RPC_URL:'http://127.0.0.1:9',CONTRACT_ADDRESS:'0x'+'1'.repeat(40),ISSUER_ADDRESS:'0x'+'2'.repeat(40),DEPLOYMENT_BLOCK:0n} as Config);
  await assert.rejects(gateway.write('issuer','issueRight',[]),/read_only_replay/);
  assert.equal(gateway.issuer,'0x'+'2'.repeat(40));
+});
+
+test('instant frontend preview contains only the canonical fictional scenario, not verified records',()=>{
+ const preview=JSON.parse(fs.readFileSync('../web/src/demo/preview.json','utf8'));
+ const canonical=createDemoScenario('fuji-replay-001');
+ for(const key of Object.keys(preview))assert.deepEqual(preview[key],(canonical as any)[key]);
+ assert.equal('students' in preview,false);assert.equal('manifest' in preview,false);assert.equal('securityAvailable' in preview,false);
 });

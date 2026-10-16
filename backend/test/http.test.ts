@@ -52,3 +52,48 @@ test('demo proxy reaches the production replay host without forwarding instituti
     await request(host).get('/api/ready').expect(200,{ready:true});
   } finally {listener.close();fs.rmSync(root,{recursive:true,force:true});}
 });
+
+test('demo remains navigable while chain verification is pending or fails', {skip:process.env.FAIRPASS_BROWSER_TEST!=='1'}, async () => {
+  const {chromium}=await import('playwright');
+  const {createDemoScenario}=await import('../src/demo/scenario.js');
+  const host=createWebHost(express(),path.resolve('../web/dist'));
+  const listener=host.listen(0,'127.0.0.1');
+  await new Promise<void>(resolve=>listener.once('listening',resolve));
+  const browser=await chromium.launch({headless:true});
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  try {
+    const page=await browser.newPage({viewport:{width:1440,height:1000}});
+    const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    let requests=0;
+    await page.route('**/api/v1/demo/world',async route=>{
+      const attempt=++requests;
+      await gate;
+      if(attempt===1)await route.fulfill({status:503,json:{error:'rpc_unavailable'}});
+      else await route.fulfill({json:{scenario:createDemoScenario('loading-browser'),state:'not_prepared',reason:'Prepared scenario only.',mode:'preparation',observedAt:new Date().toISOString(),network:null,programs:[],students:[],dataset:null,manifest:null,securityAvailable:false}});
+    });
+    const port=(listener.address() as import('node:net').AddressInfo).port;
+    await page.goto(`http://127.0.0.1:${port}/demo`,{waitUntil:'domcontentloaded'});
+    await page.getByRole('heading',{name:'Admissions. Proof on-chain.'}).waitFor({timeout:5000});
+    assert.equal(await page.locator('.demo-loading').count(),0);
+    await page.getByRole('link',{name:'Explore the protocol',exact:true}).click();
+    await page.getByRole('heading',{name:'Rules locked on-chain.',exact:true}).waitFor();
+    assert.equal(await page.getByText('Locked on Avalanche',{exact:true}).count(),0);
+    await page.locator('.demo-chapters a[href="/demo/proof"]').click();
+    await page.getByRole('button',{name:'Reveal the public proof',exact:true}).click();
+    assert.equal(await page.getByText('Calculation verified on Avalanche.',{exact:true}).count(),0);
+    await page.locator('.demo-chapters a[href="/demo/verify"]').click();
+    const check=page.getByRole('button',{name:'Check the changed score',exact:true});
+    assert.equal(await check.isDisabled(),true);
+    assert.equal(await page.locator('.demo-network.verified').count(),0);
+    release();
+    await page.locator('.demo-network.unavailable').first().waitFor();
+    assert.equal(await check.isDisabled(),true);
+    await page.getByRole('button',{name:'Refresh demo evidence',exact:true}).click();
+    await page.getByText('Fuji deployment pending',{exact:true}).first().waitFor();
+    await page.locator('.demo-header .wordmark').click();
+    await page.getByRole('heading',{name:'Admissions. Proof on-chain.'}).waitFor();
+    assert.equal(await page.locator('.demo-network.verified').count(),0);
+    assert.deepEqual(errors,[]);
+  } finally {release();await browser.close();listener.closeAllConnections();await new Promise<void>(resolve=>listener.close(()=>resolve()));}
+});

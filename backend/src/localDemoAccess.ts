@@ -20,7 +20,14 @@ export const registerLocalDemoAccess=(app:Express,config:Config,store:Store,chai
  ];
  app.get('/v1/auth/demo-access',async(_req,res)=>{
   res.setHeader('Cache-Control','no-store');
-  if(!enabled){res.json({enabled:false});return;}
+  if(!enabled){
+   // Public replay links expose only the fictional scenario, never login sessions.
+   if(config.DEMO_REPLAY_API_URL){
+    const scenario=createDemoScenario('preparation');
+    res.json({enabled:false,replay:true,institution:true,students:scenario.expected.map(s=>({id:s.name,name:s.name,outcome:s.programId?'admitted':'not_admitted'}))});
+   }else res.json({enabled:false});
+   return;
+  }
   const students=[];
   for(const s of candidates())if(await store.students.findOne({_id:s.id})){
    const records=await store.results.find({studentId:s.id}).toArray();

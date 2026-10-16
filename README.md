@@ -159,8 +159,19 @@ persist in the local demo; do not reset history to repeat a workflow.
 The canonical Compose override enables `DEMO_JUDGE_ACCESS=true` only for its
 local presenter. The server also requires `FAIRPASS_LOCAL=true`, chain 31337, a
 write-enabled API and a successful chain readiness check. Fuji and mainnet do not
-offer password-free access, even if this flag is set. Normal sign-in remains
+issue password-free login sessions, even if this flag is set. Production sign-in
+pages with `DEMO_REPLAY_API_URL` configured instead show read-only student and
+university demo links. These open the prepared replay without creating sessions
+or granting publishing permissions. Normal sign-in remains
 available and unchanged. Demo sessions stop working when demo access is disabled.
+
+### Demo loading
+
+The demo renders its public fictional scenario immediately while blockchain
+evidence loads in the background. Verified records, badges and proof actions
+remain gated by the real API response. Failed checks leave the story navigable
+with an explicit verification status and retry action. The bundled preview is
+checked against the canonical scenario in the backend regression suite.
 
 ## 3. Frontend development
 

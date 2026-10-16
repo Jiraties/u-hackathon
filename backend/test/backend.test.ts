@@ -381,6 +381,14 @@ test('judge demo access only issues local fictional sessions and preserves norma
  await request(app).get('/v1/office/workspace').auth(institution.token,{type:'bearer'}).expect(200);
  await request(app).get('/v1/me/wallet').auth(institution.token,{type:'bearer'}).expect(401);
  await request(app).post('/v1/auth/institution/login').send({operatorId:'demo-office',password:'wrong'}).expect(401);
+ const replayApp=createApp({...config,CHAIN_ID:43113,DEMO_REPLAY_API_URL:'http://replay.railway.internal:3001'},store,chain);t.after(()=>replayApp.locals.closeScoring());
+ const replay=(await request(replayApp).get('/v1/auth/demo-access').expect(200)).body;
+ assert.equal(replay.enabled,false);assert.equal(replay.replay,true);assert.equal(replay.institution,true);assert.equal(replay.students.length,9);
+ assert.ok(replay.students.some((s:any)=>s.name==='Pim'&&s.outcome==='admitted'));
+ assert.ok(replay.students.some((s:any)=>s.name==='Narin'&&s.outcome==='not_admitted'));
+ assert.equal(JSON.stringify(replay).includes('private-student'),false);assert.equal('token' in replay,false);
+ for(const body of [{role:'institution'},{role:'student',studentId:'Pim'}])await request(replayApp).post('/v1/auth/demo-access').send(body).expect(404);
+ await request(replayApp).get('/v1/office/workspace').expect(401);
  for(const patch of [{DEMO_JUDGE_ACCESS:false},{CHAIN_ID:43113},{CHAIN_ID:43114},{DEMO_READ_ONLY:true}]){
   const disabled=createApp({...config,...patch} as Config,store,chain);t.after(()=>disabled.locals.closeScoring());
   assert.equal((await request(disabled).get('/v1/auth/demo-access').expect(200)).body.enabled,false);

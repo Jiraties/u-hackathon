@@ -5,6 +5,8 @@ import { StudentWallet, ReceiptView, type ReplayWallet } from "../LiveApp";
 import { api } from "../services/api";
 import {
   chapters,
+  createPreviewWorld,
+  createInitialWorld,
   cleanName,
   loadWorld,
   networkLabel,
@@ -55,7 +57,9 @@ const Avatar = ({ name, small = false }: { name: string; small?: boolean }) => (
 const Status = ({ world }: { world: World }) => (
   <span className={`demo-network ${world.state}`}>
     <span />
-    {world.state === "verified"
+    {world.verificationPending
+      ? "Checking evidence…"
+      : world.state === "verified"
       ? networkLabel(world)
       : world.state === "stale"
         ? "Historical evidence · no longer current"
@@ -602,9 +606,9 @@ const StudentsChapter = ({
       ) : (
         <div className="demo-stage demo-empty">
           <Icon name="clock" size={36} />
-          <h2>This wallet is not prepared yet.</h2>
+          <h2>{world.verificationPending ? "Checking this wallet’s evidence…" : "Wallet evidence is unavailable."}</h2>
           <p>
-            The scenario expects{" "}
+            You can explore the other chapters while this record is checked. The scenario expects{" "}
             {expected.programId ? "an offer" : "no admission right"}. No issued
             token or verified proof is being claimed.
           </p>
@@ -866,10 +870,13 @@ const VerifyChapter = ({
 
 const DemoPage = () => {
   const resetRequested = useRef(false);
-  const [world, setWorld] = useState<World | null>(null),
+  const [world, setWorld] = useState<World>(createInitialWorld),
     [error, setError] = useState(""),
     [evidence, setEvidence] = useState<string | null>(null),
-    [selected, setSelected] = useState("");
+    [selected, setSelected] = useState(() => {
+      const requested = new URLSearchParams(window.location.search).get("student");
+      return createInitialWorld().scenario.expected.find(s => s.studentId === requested || s.name === requested)?.studentId ?? "";
+    });
   useEffect(() => {
     document.body.classList.add("demo-view");
     return () => document.body.classList.remove("demo-view");
@@ -897,17 +904,23 @@ const DemoPage = () => {
           } catch {
             /* Progress is optional. */
           }
+          const requested = new URLSearchParams(window.location.search).get("student");
+          const chosen = value.scenario.expected.find(s => s.studentId === requested || s.name === requested);
+          if (chosen) setSelected(chosen.studentId);
         }
       })
       .catch(() => {
-        if (active) setError("The Demo World could not be loaded.");
+        if (active) {
+          setError("Blockchain verification is unavailable. You can still explore the scenario.");
+          setWorld(current => ({...createPreviewWorld(),scenario:current.scenario,state:"unavailable",reason:"Blockchain verification is unavailable.",verificationPending:false}));
+        }
       });
     return () => {
       active = false;
     };
   }, []);
   useEffect(() => {
-    if (!world || resetRequested.current) return;
+    if (world.verificationPending || resetRequested.current) return;
     try {
       const next = Array.from(
         new Set([...visited, ...(chapter >= 0 ? [chapters[chapter].id] : [])]),
@@ -927,16 +940,25 @@ const DemoPage = () => {
   }, [world, chapter, visited, selected]);
   const refresh = async () => {
     setError("");
+    setWorld(current => ({...createPreviewWorld(),scenario:current.scenario}));
     try {
       setWorld(await loadWorld(true));
     } catch {
-      setError("Verification is unavailable. Try again in a moment.");
+      setError("Verification is unavailable. You can still explore the scenario.");
+      setWorld(current => ({...createPreviewWorld(),scenario:current.scenario,state:"unavailable",reason:"Blockchain verification is unavailable.",verificationPending:false}));
     }
   };
   const studentId =
     selected ||
     world?.scenario.expected.find((s) => s.name === "Pim")?.studentId ||
     "";
+  const selectStudent = (student: string) => {
+    setSelected(student);
+    const url = new URL(window.location.href);
+    url.searchParams.set("student", world.scenario.expected.find(s => s.studentId === student)?.name ?? student);
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
   const chooseStudent = (student: string) => {
     setSelected(student);
     if (world)
@@ -951,7 +973,7 @@ const DemoPage = () => {
           }),
         );
       } catch {}
-    window.history.pushState(null, "", "/demo/students");
+    window.history.pushState(null, "", `/demo/students?student=${encodeURIComponent(world.scenario.expected.find(s => s.studentId === student)?.name ?? student)}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
     window.scrollTo(0, 0);
   };
@@ -1013,24 +1035,6 @@ const DemoPage = () => {
         </nav>
       ) : null}
       <main id="demo-main" tabIndex={-1}>
-        {!world ? (
-          <div className="demo-loading" role="status">
-            <Icon name="clock" size={35} />
-            <h1>{error || "Opening one shared world…"}</h1>
-            {error ? (
-              <button
-                className="button button-primary"
-                onClick={() => void refresh()}
-              >
-                Try again
-              </button>
-            ) : (
-              <p>
-                Nine students. Three programs. The evidence behind every result.
-              </p>
-            )}
-          </div>
-        ) : (
           <>
             {chapter < 0 ? (
               <>
@@ -1058,8 +1062,11 @@ const DemoPage = () => {
                       </a>
                     </div>
                     <Status world={world} />
+                    {world.state === "unavailable" ? <button className="demo-text-action" onClick={() => void refresh()}>Retry verification<Icon name="activity" size={15}/></button> : null}
                     <p className="demo-runtime-note">
-                      {world.mode === "local"
+                      {world.verificationPending
+                        ? "Explore the scenario while blockchain evidence is checked in the background."
+                        : world.mode === "local"
                         ? "Real local proofs. Fuji replay awaits approved deployment."
                         : world.mode === "fuji"
                           ? "Confirmed evidence from the Avalanche Fuji test network."
@@ -1164,6 +1171,7 @@ const DemoPage = () => {
                   <button
                     onClick={() => void refresh()}
                     aria-label="Refresh demo evidence"
+                    disabled={world.verificationPending}
                   >
                     <Icon name="activity" size={15} />
                     Refresh evidence
@@ -1192,7 +1200,7 @@ const DemoPage = () => {
                     <StudentsChapter
                       world={world}
                       selected={studentId}
-                      setSelected={setSelected}
+                      setSelected={selectStudent}
                     />
                   ) : (
                     <VerifyChapter
@@ -1264,7 +1272,6 @@ const DemoPage = () => {
               </p>
             ) : null}
           </>
-        )}
       </main>
       <footer className="demo-footer">
         <span>
